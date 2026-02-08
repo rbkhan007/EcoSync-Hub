@@ -12,10 +12,6 @@ services:
     buildCommand: cd backend && npm install
     startCommand: cd backend && node server.js
     envVars:
-      - key: NODE_ENV
-        value: production
-      - key: PORT
-        value: 10000
       - key: DATABASE_URL
         fromDatabase:
           name: ecosync-hub-db
@@ -24,15 +20,16 @@ services:
         generateValue: true
       - key: FRONTEND_URL
         value: https://ecosync-hub.com
+      - key: NODE_ENV
+        value: production
 
 staticSites:
   - name: ecosync-hub-frontend
-    env: static
     plan: free
-    domains:
-      - ecosync-hub.com
     buildCommand: cd frontend && npm install && npm run build
     staticPublishPath: frontend/dist
+    domains:
+      - ecosync-hub.com
     envVars:
       - key: VITE_API_URL
         fromService:
