@@ -23,10 +23,7 @@ services:
       - key: JWT_SECRET
         generateValue: true
       - key: FRONTEND_URL
-        fromService:
-          type: static_site
-          name: ecosync-hub-frontend
-          property: url
+        value: https://ecosync-hub.com
 
 staticSites:
   - name: ecosync-hub-frontend
