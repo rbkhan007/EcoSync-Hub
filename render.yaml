@@ -23,9 +23,9 @@ services:
       - key: NODE_ENV
         value: production
 
-staticSites:
-  - name: ecosync-hub-frontend
-    plan: free
+  - type: web
+    name: ecosync-hub-frontend
+    env: static
     buildCommand: cd frontend && npm install && npm run build
     staticPublishPath: frontend/dist
     domains:
