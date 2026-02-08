@@ -24,12 +24,12 @@ services:
         generateValue: true
       - key: FRONTEND_URL
         fromService:
-          type: static
+          type: static_site
           name: ecosync-hub-frontend
           property: url
 
   # Frontend Static Site
-  - type: static
+  - type: static_site
     name: ecosync-hub-frontend
     env: static
     plan: free
