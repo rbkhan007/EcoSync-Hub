@@ -28,9 +28,8 @@ services:
           name: ecosync-hub-frontend
           property: url
 
-  # Frontend Static Site
-  - type: static_site
-    name: ecosync-hub-frontend
+staticSites:
+  - name: ecosync-hub-frontend
     env: static
     plan: free
     domains:
