@@ -1,0 +1,314 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&display=swap');
+
+:root {
+  --primary-main: #2e7d32;
+  --primary-light: #4caf50;
+  --primary-dark: #1b5e20;
+  --secondary-main: #00e676;
+  --bg-gradient: linear-gradient(135deg, #f0f7f0 0%, #e0f2f1 100%);
+  --glass-bg: rgba(255, 255, 255, 0.82);
+  --glass-border: rgba(255, 255, 255, 0.4);
+  --card-shadow: 0 12px 40px -12px rgba(0, 0, 0, 0.08);
+  --hover-shadow: 0 20px 60px -20px rgba(0, 0, 0, 0.15);
+  --text-main: #1a231f;
+  --text-dim: #5c6360;
+  --bg-color: #f8f9fa;
+  --card-bg: rgba(255, 255, 255, 0.9);
+}
+
+body.theme-dracula {
+  --primary-main: #bd93f9;
+  --primary-light: #ff79c6;
+  --primary-dark: #6272a4;
+  --secondary-main: #50fa7b;
+  --bg-gradient: linear-gradient(135deg, #282a36 0%, #44475a 100%);
+  --glass-bg: rgba(40, 42, 54, 0.85);
+  --glass-border: rgba(98, 114, 164, 0.3);
+  --card-shadow: 0 12px 40px -12px rgba(0, 0, 0, 0.5);
+  --hover-shadow: 0 20px 60px -20px rgba(0, 0, 0, 0.7);
+  --text-main: #f8f8f2;
+  --text-dim: #6272a4;
+  --bg-color: #282a36;
+  --card-bg: rgba(68, 71, 90, 0.9);
+}
+
+body.theme-nord {
+  --primary-main: #88c0d0;
+  --primary-light: #8fbcbb;
+  --primary-dark: #5e81ac;
+  --secondary-main: #a3be8c;
+  --bg-gradient: linear-gradient(135deg, #2e3440 0%, #3b4252 100%);
+  --glass-bg: rgba(46, 52, 64, 0.85);
+  --glass-border: rgba(76, 86, 106, 0.3);
+  --card-shadow: 0 12px 40px -12px rgba(0, 0, 0, 0.4);
+  --hover-shadow: 0 20px 60px -20px rgba(0, 0, 0, 0.6);
+  --text-main: #eceff4;
+  --text-dim: #d8dee9;
+  --bg-color: #2e3440;
+  --card-bg: rgba(59, 66, 82, 0.9);
+}
+
+:root {
+  font-family: 'Outfit', 'Inter', system-ui, sans-serif;
+  line-height: 1.6;
+  color: var(--text-main);
+  background-color: var(--bg-color);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+body {
+  min-height: 100vh;
+  background: var(--bg-gradient);
+  background-attachment: fixed;
+  color: var(--text-main);
+}
+
+a {
+  font-weight: 500;
+  color: var(--primary-main);
+  text-decoration: none;
+}
+
+a:hover {
+  color: var(--primary-dark);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  color: var(--primary-main);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+button {
+  border-radius: 12px;
+  border: none;
+  padding: 0.8rem 1.6rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  font-family: inherit;
+  background: var(--primary-main);
+  color: white;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+button:hover {
+  background: var(--primary-dark);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+}
+
+button:active {
+  transform: translateY(0);
+}
+
+input,
+textarea,
+select {
+  padding: 0.8rem;
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  background: var(--card-bg);
+  color: var(--text-main);
+  font-family: inherit;
+}
+
+input:focus {
+  outline: none;
+  border-color: var(--primary-light);
+  box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1);
+}
+
+.card {
+  background: var(--card-bg);
+  backdrop-filter: blur(12px) saturate(180%);
+  -webkit-backdrop-filter: blur(12px) saturate(180%);
+  border: 1px solid var(--glass-border);
+  border-radius: 24px;
+  box-shadow: var(--card-shadow);
+  padding: 2rem;
+  margin: 1.5rem 0;
+}
+
+.card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 20px 60px -20px rgba(0, 0, 0, 0.15);
+  border-color: var(--primary-light);
+}
+
+.page-container {
+  max-width: 1300px;
+  margin: 0 auto;
+  padding: 3rem 1.5rem;
+}
+
+.eco-badge {
+  background: linear-gradient(135deg, var(--primary-light), var(--primary-main));
+  color: white;
+  padding: 0.3rem 0.8rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  box-shadow: 0 2px 8px rgba(76, 175, 80, 0.25);
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in {
+  animation: fadeIn 0.5s ease forwards;
+}
+
+@keyframes morph {
+  0% {
+    border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%;
+  }
+
+  34% {
+    border-radius: 70% 30% 50% 50% / 30% 30% 70% 70%;
+  }
+
+  67% {
+    border-radius: 30% 60% 70% 40% / 50% 60% 30% 60%;
+  }
+
+  100% {
+    border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%;
+  }
+}
+
+@keyframes float {
+  0% {
+    transform: translateY(0px);
+  }
+
+  50% {
+    transform: translateY(-10px);
+  }
+
+  100% {
+    transform: translateY(0px);
+  }
+}
+
+.glass-morphism {
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(16px) saturate(150%);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: var(--card-shadow);
+}
+
+/* Enhanced hover states */
+.hover-lift {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.hover-lift:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.12);
+}
+
+/* Consistent section spacing */
+.section-spacing {
+  margin-bottom: 3rem;
+}
+
+.section-spacing-lg {
+  margin-bottom: 4rem;
+}
+
+/* Premium button styles */
+.btn-premium {
+  font-weight: 700;
+  border-radius: 12px;
+  padding: 0.8rem 1.6rem;
+  text-transform: none;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-premium:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(46, 125, 50, 0.25);
+}
+
+/* Smooth transitions for all interactive elements */
+a,
+button,
+.MuiCard-root,
+.MuiChip-root {
+  transition: all 0.3s ease;
+}
+
+/* Enhanced focus states for accessibility */
+*:focus-visible {
+  outline: 3px solid var(--primary-light);
+  outline-offset: 2px;
+}
+
+/* Responsive typography scaling */
+@media (max-width: 600px) {
+  .page-container {
+    padding: 1.5rem 1rem;
+  }
+
+  h1,
+  .MuiTypography-h1 {
+    font-size: 2.2rem;
+  }
+
+  h2,
+  .MuiTypography-h2 {
+    font-size: 1.85rem;
+  }
+
+  h3,
+  .MuiTypography-h3 {
+    font-size: 1.6rem;
+  }
+
+  .card {
+    padding: 1.25rem;
+    margin: 1rem 0;
+  }
+}
+
+/* Print styles */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  body {
+    background: white;
+  }
+
+  .card {
+    box-shadow: none;
+    border: 1px solid #ddd;
+  }
+}
