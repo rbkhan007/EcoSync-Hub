@@ -1,8 +1,3 @@
-databases:
-  - name: ecosync-hub-db
-    plan: free
-    databaseName: ecosync_hub
-
 services:
   # Backend Web Service
   - type: web
@@ -25,12 +20,13 @@ services:
       - key: NODE_ENV
         value: production
 
-staticSites:
-  - name: ecosync-hub-frontend
+  # Frontend Static Site
+  - type: static
+    name: ecosync-hub-frontend
     plan: free
     rootDir: frontend
     buildCommand: npm install && npm run build
-    publishPath: dist
+    staticPublishPath: dist
     domains:
       - ecosync-hub.com
     envVars:
