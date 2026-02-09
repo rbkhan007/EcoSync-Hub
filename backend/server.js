@@ -65,6 +65,12 @@ const allowedOrigins = process.env.FRONTEND_URL
     ? process.env.FRONTEND_URL.split(',').map(o => o.trim())
     : [];
 
+// Hardcoded fallback for Render deployment (ensures CORS works immediately)
+const renderFrontendUrl = 'https://ecosync-hub-frontend.onrender.com';
+if (!allowedOrigins.includes(renderFrontendUrl)) {
+    allowedOrigins.push(renderFrontendUrl);
+}
+
 // In production, use explicit origins; in development, allow all
 const corsOptions = {
     origin: (origin, callback) => {
