@@ -17,10 +17,17 @@ const db = require('./db').promise();
 
 const app = express();
 const server = http.createServer(app);
+
+// Socket.IO with dynamic CORS based on environment
+const socketCorsOrigin = process.env.FRONTEND_URL
+    ? process.env.FRONTEND_URL.split(',').map(o => o.trim())
+    : "*";
+
 const io = socketIo(server, {
     cors: {
-        origin: "*",
-        methods: ["GET", "POST"]
+        origin: socketCorsOrigin,
+        methods: ["GET", "POST"],
+        credentials: true
     }
 });
 
@@ -53,20 +60,41 @@ pool.connect((err, client, release) => {
 
 const PORT = process.env.PORT || 5000;
 
-// Middleware
-const allowedOrigins = process.env.FRONTEND_URL ? process.env.FRONTEND_URL.split(',').map(o => o.trim()) : "*";
-app.use(cors({
+// Middleware - CORS Configuration
+const allowedOrigins = process.env.FRONTEND_URL
+    ? process.env.FRONTEND_URL.split(',').map(o => o.trim())
+    : [];
+
+// In production, use explicit origins; in development, allow all
+const corsOptions = {
     origin: (origin, callback) => {
-        // Allow requests with no origin (like mobile apps or curl requests)
-        if (!origin) return callback(null, true);
-        if (allowedOrigins === "*" || allowedOrigins.indexOf(origin) !== -1) {
-            callback(null, true);
-        } else {
-            callback(new Error('Not allowed by CORS'));
+        // Allow requests with no origin (mobile apps, Postman, curl)
+        if (!origin) {
+            return callback(null, true);
         }
+
+        // If no FRONTEND_URL is set, allow all origins (development mode)
+        if (allowedOrigins.length === 0) {
+            console.log(`[CORS] Allowing origin (dev mode): ${origin}`);
+            return callback(null, true);
+        }
+
+        // Check if origin is in allowed list
+        if (allowedOrigins.includes(origin)) {
+            console.log(`[CORS] Allowing origin: ${origin}`);
+            return callback(null, true);
+        }
+
+        // Reject origin
+        console.warn(`[CORS] Rejecting origin: ${origin}`);
+        callback(new Error(`Origin ${origin} not allowed by CORS`));
     },
-    credentials: true
-}));
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+};
+
+app.use(cors(corsOptions));
 app.use(express.json());
 
 // Routes
