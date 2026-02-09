@@ -113,6 +113,11 @@ app.use('/api/product-comments', productCommentRoutes);
 const path = require('path');
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
+// Health check endpoint
+app.get('/health', (req, res) => {
+    res.status(200).send('System Operational');
+});
+
 // Basic route
 app.get('/', (req, res) => {
     res.json({ message: 'EcoSync Hub API' });

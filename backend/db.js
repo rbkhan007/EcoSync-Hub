@@ -9,14 +9,25 @@ const pool = new Pool({
     }
 });
 
-// Test the connection on startup
-pool.query('SELECT NOW()', (err, res) => {
-    if (err) {
-        console.error('Failed to connect to PostgreSQL:', err.message);
-    } else {
-        console.log('Successfully connected to PostgreSQL!');
+// Test the connection on startup with retries for production
+const testConnection = async (retries = 5, delay = 5000) => {
+    for (let i = 0; i < retries; i++) {
+        try {
+            const res = await pool.query('SELECT NOW()');
+            console.log('Successfully connected to PostgreSQL!', res.rows[0]);
+            return;
+        } catch (err) {
+            console.error(`Database connection attempt ${i + 1} failed:`, err.message);
+            if (i < retries - 1) {
+                console.log(`Retrying in ${delay / 1000}s...`);
+                await new Promise(resolve => setTimeout(resolve, delay));
+            }
+        }
     }
-});
+    console.error('Final database connection attempt failed. Service may be unstable.');
+};
+
+testConnection();
 
 module.exports = {
     query: async (text, params = []) => {
