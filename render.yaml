@@ -21,7 +21,7 @@ services:
       - key: JWT_SECRET
         generateValue: true
       - key: FRONTEND_URL
-        value: https://ecosync-hub.com
+        value: https://ecosync-hub.com,https://ecosync-hub-frontend.onrender.com
       - key: NODE_ENV
         value: production
 
