@@ -7,7 +7,7 @@ const router = express.Router();
 // Get all categories
 router.get('/', async (req, res) => {
     try {
-        const [categories] = await db.promise().query('SELECT * FROM categories');
+        const [categories] = await db.query('SELECT * FROM categories');
         res.json(categories);
     } catch (error) {
         res.status(500).json({ message: 'Server error', error: error.message });
@@ -18,7 +18,7 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
     const { id } = req.params;
     try {
-        const [category] = await db.promise().query('SELECT * FROM categories WHERE id = ?', [id]);
+        const [category] = await db.query('SELECT * FROM categories WHERE id = ?', [id]);
         if (category.length === 0) {
             return res.status(404).json({ message: 'Category not found' });
         }
@@ -37,7 +37,7 @@ router.post('/', authenticateToken, async (req, res) => {
     }
 
     try {
-        const [result] = await db.promise().query(
+        const [result] = await db.query(
             'INSERT INTO categories (name, description) VALUES (?, ?)',
             [name, description]
         );
@@ -53,7 +53,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
     const { name, description } = req.body;
 
     try {
-        const [result] = await db.promise().query(
+        const [result] = await db.query(
             'UPDATE categories SET name = ?, description = ? WHERE id = ?',
             [name, description, id]
         );
@@ -70,7 +70,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
 router.delete('/:id', authenticateToken, async (req, res) => {
     const { id } = req.params;
     try {
-        const [result] = await db.promise().query('DELETE FROM categories WHERE id = ?', [id]);
+        const [result] = await db.query('DELETE FROM categories WHERE id = ?', [id]);
         if (result.affectedRows === 0) {
             return res.status(404).json({ message: 'Category not found' });
         }

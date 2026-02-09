@@ -8,7 +8,7 @@ const router = express.Router();
 router.get('/product/:productId', async (req, res) => {
     const { productId } = req.params;
     try {
-        const [reviews] = await db.promise().query(
+        const [reviews] = await db.query(
             `SELECT r.rating, r.comment, r.created_at, u.username
        FROM reviews r
        JOIN users u ON r.user_id = u.id
@@ -29,7 +29,7 @@ router.get('/eligibility/:productId', authenticateToken, async (req, res) => {
 
     try {
         // Check if user has purchased the product and it's delivered
-        const [purchased] = await db.promise().query(
+        const [purchased] = await db.query(
             `SELECT oi.id FROM order_items oi
              JOIN orders o ON oi.order_id = o.id
              WHERE o.user_id = ? AND oi.product_id = ? AND o.status = 'delivered'`,
@@ -37,7 +37,7 @@ router.get('/eligibility/:productId', authenticateToken, async (req, res) => {
         );
 
         // Check if already reviewed
-        const [existing] = await db.promise().query(
+        const [existing] = await db.query(
             'SELECT id FROM reviews WHERE user_id = ? AND product_id = ?',
             [userId, productId]
         );
@@ -63,7 +63,7 @@ router.post('/', authenticateToken, async (req, res) => {
 
     try {
         // Check if user has purchased the product
-        const [purchased] = await db.promise().query(
+        const [purchased] = await db.query(
             `SELECT oi.id FROM order_items oi
        JOIN orders o ON oi.order_id = o.id
        WHERE o.user_id = ? AND oi.product_id = ? AND o.status = 'delivered'`,
@@ -75,7 +75,7 @@ router.post('/', authenticateToken, async (req, res) => {
         }
 
         // Check if already reviewed
-        const [existing] = await db.promise().query(
+        const [existing] = await db.query(
             'SELECT id FROM reviews WHERE user_id = ? AND product_id = ?',
             [userId, product_id]
         );
@@ -85,7 +85,7 @@ router.post('/', authenticateToken, async (req, res) => {
         }
 
         // Insert review
-        const [result] = await db.promise().query(
+        const [result] = await db.query(
             'INSERT INTO reviews (user_id, product_id, rating, comment) VALUES (?, ?, ?, ?)',
             [userId, product_id, rating, comment]
         );

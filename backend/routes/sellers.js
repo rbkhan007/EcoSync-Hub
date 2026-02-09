@@ -8,7 +8,7 @@ const router = express.Router();
 router.get('/:slug', async (req, res) => {
     const { slug } = req.params;
     try {
-        const [users] = await db.promise().query(
+        const [users] = await db.query(
             'SELECT id, username, email, bio, avatar_url, eco_points FROM users WHERE username = ?',
             [slug]
         );
@@ -31,16 +31,16 @@ router.post('/apply', authenticateToken, async (req, res) => {
 router.get('/dashboard/stats', authenticateToken, async (req, res) => {
     const sellerId = req.user.id;
     try {
-        const [productCount] = await db.promise().query('SELECT COUNT(*) as count FROM products WHERE seller_id = ?', [sellerId]);
-        const [orderCount] = await db.promise().query(
+        const [productCount] = await db.query('SELECT COUNT(*) as count FROM products WHERE seller_id = ?', [sellerId]);
+        const [orderCount] = await db.query(
             'SELECT COUNT(DISTINCT oi.order_id) as count FROM order_items oi JOIN products p ON oi.product_id = p.id WHERE p.seller_id = ?',
             [sellerId]
         );
-        const [revenue] = await db.promise().query(
+        const [revenue] = await db.query(
             'SELECT SUM(oi.price * oi.quantity) as total FROM order_items oi JOIN products p ON oi.product_id = p.id WHERE p.seller_id = ?',
             [sellerId]
         );
-        const [impact] = await db.promise().query(
+        const [impact] = await db.query(
             'SELECT SUM(p.co2_reduction_kg * oi.quantity) as total FROM order_items oi JOIN products p ON oi.product_id = p.id WHERE p.seller_id = ?',
             [sellerId]
         );
@@ -60,7 +60,7 @@ router.get('/dashboard/stats', authenticateToken, async (req, res) => {
 router.get('/dashboard/orders', authenticateToken, async (req, res) => {
     const sellerId = req.user.id;
     try {
-        const [orders] = await db.promise().query(
+        const [orders] = await db.query(
             `SELECT o.id, o.total_amount, o.status, o.created_at, u.username as customer_name, 
              SUM(oi.quantity) as total_items, STRING_AGG(p.name, ', ') as product_names
              FROM orders o
@@ -82,7 +82,7 @@ router.get('/dashboard/orders', authenticateToken, async (req, res) => {
 router.get('/dashboard/customers', authenticateToken, async (req, res) => {
     const sellerId = req.user.id;
     try {
-        const [customers] = await db.promise().query(
+        const [customers] = await db.query(
             `SELECT DISTINCT u.id, u.username, u.email, u.avatar_url, 
              COUNT(DISTINCT o.id) as order_count, SUM(oi.price * oi.quantity) as total_spent
              FROM users u

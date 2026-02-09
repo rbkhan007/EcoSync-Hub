@@ -8,7 +8,7 @@ const router = express.Router();
 router.get('/', authenticateToken, async (req, res) => {
     const userId = req.user.id;
     try {
-        const [wishlist] = await db.promise().query(
+        const [wishlist] = await db.query(
             `SELECT w.id, w.created_at, p.id as product_id, p.name, p.price, p.image_url
              FROM wishlists w
              JOIN products p ON w.product_id = p.id
@@ -31,7 +31,7 @@ router.post('/', authenticateToken, async (req, res) => {
     }
 
     try {
-        const [existing] = await db.promise().query(
+        const [existing] = await db.query(
             'SELECT id FROM wishlists WHERE user_id = ? AND product_id = ?',
             [userId, product_id]
         );
@@ -40,7 +40,7 @@ router.post('/', authenticateToken, async (req, res) => {
             return res.status(400).json({ message: 'Product already in wishlist' });
         }
 
-        await db.promise().query(
+        await db.query(
             'INSERT INTO wishlists (user_id, product_id) VALUES (?, ?)',
             [userId, product_id]
         );
@@ -57,7 +57,7 @@ router.delete('/:productId', authenticateToken, async (req, res) => {
     const { productId } = req.params;
 
     try {
-        const [result] = await db.promise().query(
+        const [result] = await db.query(
             'DELETE FROM wishlists WHERE user_id = ? AND product_id = ?',
             [userId, productId]
         );

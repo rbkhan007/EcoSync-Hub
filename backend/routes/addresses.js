@@ -8,7 +8,7 @@ const router = express.Router();
 router.get('/', authenticateToken, async (req, res) => {
     const userId = req.user.id;
     try {
-        const [addresses] = await db.promise().query(
+        const [addresses] = await db.query(
             'SELECT * FROM user_addresses WHERE user_id = ?',
             [userId]
         );
@@ -29,10 +29,10 @@ router.post('/', authenticateToken, async (req, res) => {
 
     try {
         if (is_default) {
-            await db.promise().query('UPDATE user_addresses SET is_default = FALSE WHERE user_id = ?', [userId]);
+            await db.query('UPDATE user_addresses SET is_default = FALSE WHERE user_id = ?', [userId]);
         }
 
-        const [result] = await db.promise().query(
+        const [result] = await db.query(
             'INSERT INTO user_addresses (user_id, address_type, full_name, phone, house_flat_no, road_street, area_locality, post_office, thana_upazila, district, division, postal_code, country, is_default) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
             [userId, address_type || 'home', full_name, phone || '', house_flat_no, road_street || '', area_locality || '', post_office || '', thana_upazila, district, division || '', postal_code, country || 'BANGLADESH', is_default || false]
         );
@@ -51,10 +51,10 @@ router.put('/:id', authenticateToken, async (req, res) => {
 
     try {
         if (is_default) {
-            await db.promise().query('UPDATE user_addresses SET is_default = FALSE WHERE user_id = ?', [userId]);
+            await db.query('UPDATE user_addresses SET is_default = FALSE WHERE user_id = ?', [userId]);
         }
 
-        const [result] = await db.promise().query(
+        const [result] = await db.query(
             'UPDATE user_addresses SET address_type = ?, full_name = ?, phone = ?, house_flat_no = ?, road_street = ?, area_locality = ?, post_office = ?, thana_upazila = ?, district = ?, division = ?, postal_code = ?, country = ?, is_default = ? WHERE id = ? AND user_id = ?',
             [address_type || 'home', full_name, phone || '', house_flat_no, road_street || '', area_locality || '', post_office || '', thana_upazila, district, division || '', postal_code, country || 'BANGLADESH', is_default || false, id, userId]
         );
@@ -74,7 +74,7 @@ router.delete('/:id', authenticateToken, async (req, res) => {
     const userId = req.user.id;
     const { id } = req.params;
     try {
-        const [result] = await db.promise().query(
+        const [result] = await db.query(
             'DELETE FROM user_addresses WHERE id = ? AND user_id = ?',
             [id, userId]
         );

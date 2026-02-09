@@ -9,7 +9,7 @@ const router = express.Router();
 router.get('/conversations', authenticateToken, async (req, res) => {
     const userId = req.user.id;
     try {
-        const [conversations] = await db.promise().query(
+        const [conversations] = await db.query(
             `SELECT
         CASE
           WHEN m.sender_id = ? THEN m.receiver_id
@@ -54,7 +54,7 @@ router.get('/', authenticateToken, async (req, res) => {
     }
 
     try {
-        const [messages] = await db.promise().query(
+        const [messages] = await db.query(
             `SELECT m.id, m.sender_id, m.receiver_id, m.content, m.is_read, m.created_at,
         u.username as sender_username
        FROM messages m
@@ -79,7 +79,7 @@ router.post('/', authenticateToken, async (req, res) => {
     }
 
     try {
-        const [result] = await db.promise().query(
+        const [result] = await db.query(
             'INSERT INTO messages (sender_id, receiver_id, content) VALUES (?, ?, ?)',
             [userId, receiver_id, content]
         );
@@ -112,7 +112,7 @@ router.post('/mark-read', authenticateToken, async (req, res) => {
     }
 
     try {
-        await db.promise().query(
+        await db.query(
             'UPDATE messages SET is_read = TRUE WHERE sender_id = ? AND receiver_id = ? AND is_read = FALSE',
             [otherUserId, userId]
         );
@@ -126,7 +126,7 @@ router.post('/mark-read', authenticateToken, async (req, res) => {
 router.get('/unread-count', authenticateToken, async (req, res) => {
     const userId = req.user.id;
     try {
-        const [result] = await db.promise().query(
+        const [result] = await db.query(
             'SELECT COUNT(*) as unread FROM messages WHERE receiver_id = ? AND is_read = FALSE',
             [userId]
         );
@@ -142,7 +142,7 @@ router.delete('/:id', authenticateToken, async (req, res) => {
     const { id } = req.params;
 
     try {
-        const [result] = await db.promise().query(
+        const [result] = await db.query(
             'DELETE FROM messages WHERE id = ? AND (sender_id = ? OR receiver_id = ?)',
             [id, userId, userId]
         );

@@ -7,7 +7,7 @@ const router = express.Router();
 // Get all posts
 router.get('/posts', async (req, res) => {
     try {
-        const [posts] = await db.promise().query(
+        const [posts] = await db.query(
             `SELECT p.id, p.content, p.image_url, p.created_at,
         u.username, u.avatar_url,
         COUNT(pl.id) as likes
@@ -27,7 +27,7 @@ router.get('/posts', async (req, res) => {
 router.get('/posts/:id', async (req, res) => {
     const { id } = req.params;
     try {
-        const [posts] = await db.promise().query(
+        const [posts] = await db.query(
             `SELECT p.id, p.content, p.image_url, p.created_at,
         u.username, u.avatar_url,
         COUNT(pl.id) as likes
@@ -57,7 +57,7 @@ router.post('/posts', authenticateToken, async (req, res) => {
     }
 
     try {
-        const [result] = await db.promise().query(
+        const [result] = await db.query(
             'INSERT INTO posts (user_id, content, image_url) VALUES (?, ?, ?)',
             [userId, content, image_url]
         );
@@ -74,7 +74,7 @@ router.put('/posts/:id', authenticateToken, async (req, res) => {
     const { content, image_url } = req.body;
 
     try {
-        const [result] = await db.promise().query(
+        const [result] = await db.query(
             'UPDATE posts SET content = ?, image_url = ? WHERE id = ? AND user_id = ?',
             [content, image_url, id, userId]
         );
@@ -93,7 +93,7 @@ router.delete('/posts/:id', authenticateToken, async (req, res) => {
     const { id } = req.params;
 
     try {
-        const [result] = await db.promise().query(
+        const [result] = await db.query(
             'DELETE FROM posts WHERE id = ? AND user_id = ?',
             [id, userId]
         );
@@ -113,18 +113,18 @@ router.post('/posts/:id/like', authenticateToken, async (req, res) => {
 
     try {
         // Check if already liked
-        const [existing] = await db.promise().query(
+        const [existing] = await db.query(
             'SELECT id FROM post_likes WHERE user_id = ? AND post_id = ?',
             [userId, postId]
         );
 
         if (existing.length > 0) {
             // Unlike
-            await db.promise().query('DELETE FROM post_likes WHERE user_id = ? AND post_id = ?', [userId, postId]);
+            await db.query('DELETE FROM post_likes WHERE user_id = ? AND post_id = ?', [userId, postId]);
             res.json({ message: 'Post unliked' });
         } else {
             // Like
-            await db.promise().query('INSERT INTO post_likes (user_id, post_id) VALUES (?, ?)', [userId, postId]);
+            await db.query('INSERT INTO post_likes (user_id, post_id) VALUES (?, ?)', [userId, postId]);
             res.json({ message: 'Post liked' });
         }
     } catch (error) {
@@ -136,7 +136,7 @@ router.post('/posts/:id/like', authenticateToken, async (req, res) => {
 router.get('/my-posts', authenticateToken, async (req, res) => {
     const userId = req.user.id;
     try {
-        const [posts] = await db.promise().query(
+        const [posts] = await db.query(
             `SELECT p.id, p.content, p.image_url, p.created_at,
         COUNT(pl.id) as likes
        FROM posts p
@@ -156,7 +156,7 @@ router.get('/my-posts', authenticateToken, async (req, res) => {
 router.get('/posts/:id/comments', async (req, res) => {
     const { id: postId } = req.params;
     try {
-        const [comments] = await db.promise().query(
+        const [comments] = await db.query(
             `SELECT c.*, u.username, u.avatar_url
              FROM post_comments c
              JOIN users u ON c.user_id = u.id
@@ -181,7 +181,7 @@ router.post('/posts/:id/comments', authenticateToken, async (req, res) => {
     }
 
     try {
-        const [result] = await db.promise().query(
+        const [result] = await db.query(
             'INSERT INTO post_comments (user_id, post_id, content) VALUES (?, ?, ?)',
             [userId, postId, content]
         );
@@ -197,7 +197,7 @@ router.delete('/comments/:id', authenticateToken, async (req, res) => {
     const { id } = req.params;
 
     try {
-        const [result] = await db.promise().query(
+        const [result] = await db.query(
             'DELETE FROM post_comments WHERE id = ? AND user_id = ?',
             [id, userId]
         );

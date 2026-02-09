@@ -8,7 +8,7 @@ const router = express.Router();
 router.get('/:productId', async (req, res) => {
     const { productId } = req.params;
     try {
-        const [comments] = await db.promise().query(
+        const [comments] = await db.query(
             'SELECT pc.id, pc.comment, pc.created_at, u.username, u.avatar_url, u.id as user_id ' +
             'FROM product_comments pc ' +
             'JOIN users u ON pc.user_id = u.id ' +
@@ -32,7 +32,7 @@ router.post('/', authenticateToken, async (req, res) => {
     }
 
     try {
-        const [result] = await db.promise().query(
+        const [result] = await db.query(
             'INSERT INTO product_comments (user_id, product_id, comment) VALUES (?, ?, ?)',
             [userId, product_id, comment]
         );

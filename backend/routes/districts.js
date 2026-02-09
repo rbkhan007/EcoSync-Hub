@@ -11,7 +11,7 @@ router.post('/', async (req, res) => {
     }
 
     try {
-        const [result] = await db.promise().query(
+        const [result] = await db.query(
             'INSERT INTO districts (name, code) VALUES (?, ?)',
             [name, code]
         );
@@ -24,7 +24,7 @@ router.post('/', async (req, res) => {
 // Get all districts
 router.get('/', async (req, res) => {
     try {
-        const [districts] = await db.promise().query('SELECT * FROM districts');
+        const [districts] = await db.query('SELECT * FROM districts');
         res.json(districts);
     } catch (error) {
         res.status(500).json({ message: 'Server error', error: error.message });

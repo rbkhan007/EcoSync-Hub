@@ -8,7 +8,7 @@ const router = express.Router();
 router.get('/', authenticateToken, async (req, res) => {
     const userId = req.user.id;
     try {
-        const [orders] = await db.promise().query(`
+        const [orders] = await db.query(`
             SELECT o.*, p.status as payment_status, p.payment_method, p.amount as paid_amount
             FROM orders o
             LEFT JOIN payments p ON o.id = p.order_id

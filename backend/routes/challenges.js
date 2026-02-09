@@ -7,7 +7,7 @@ const router = express.Router();
 // Get all challenges
 router.get('/', async (req, res) => {
     try {
-        const [challenges] = await db.promise().query('SELECT * FROM challenges ORDER BY created_at DESC');
+        const [challenges] = await db.query('SELECT * FROM challenges ORDER BY created_at DESC');
         res.json(challenges);
     } catch (error) {
         res.status(500).json({ message: 'Server error', error: error.message });
@@ -18,7 +18,7 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
     const { id } = req.params;
     try {
-        const [challenge] = await db.promise().query('SELECT * FROM challenges WHERE id = ?', [id]);
+        const [challenge] = await db.query('SELECT * FROM challenges WHERE id = ?', [id]);
         if (challenge.length === 0) {
             return res.status(404).json({ message: 'Challenge not found' });
         }
@@ -41,7 +41,7 @@ router.post('/', authenticateToken, async (req, res) => {
     }
 
     try {
-        const [result] = await db.promise().query(
+        const [result] = await db.query(
             'INSERT INTO challenges (title, description, points_reward, co2_saving_kg, duration_days, image_url, category) VALUES (?, ?, ?, ?, ?, ?, ?)',
             [title, description || '', points_reward, co2_saving_kg || 0.00, duration_days, image_url || '', category || 'Week']
         );
@@ -61,7 +61,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
     }
 
     try {
-        const [result] = await db.promise().query(
+        const [result] = await db.query(
             'UPDATE challenges SET title = ?, description = ?, points_reward = ?, co2_saving_kg = ?, duration_days = ?, image_url = ?, category = ? WHERE id = ?',
             [title, description || '', points_reward || 0, co2_saving_kg || 0.00, duration_days || 7, image_url || '', category || 'Week', id]
         );
@@ -83,7 +83,7 @@ router.delete('/:id', authenticateToken, async (req, res) => {
     }
 
     try {
-        const [result] = await db.promise().query('DELETE FROM challenges WHERE id = ?', [id]);
+        const [result] = await db.query('DELETE FROM challenges WHERE id = ?', [id]);
         if (result.affectedRows === 0) {
             return res.status(404).json({ message: 'Challenge not found' });
         }
@@ -96,7 +96,7 @@ router.delete('/:id', authenticateToken, async (req, res) => {
 // Get user's challenges
 router.get('/user/me', authenticateToken, async (req, res) => {
     try {
-        const [userChallenges] = await db.promise().query(
+        const [userChallenges] = await db.query(
             `SELECT uc.*, c.title, c.description, c.points_reward, c.co2_saving_kg, c.duration_days, c.category
              FROM user_challenges uc
              JOIN challenges c ON uc.challenge_id = c.id
@@ -117,7 +117,7 @@ router.post('/join/:challengeId', authenticateToken, async (req, res) => {
 
     try {
         // Check if already joined
-        const [existing] = await db.promise().query(
+        const [existing] = await db.query(
             'SELECT id FROM user_challenges WHERE user_id = ? AND challenge_id = ?',
             [userId, challengeId]
         );
@@ -126,13 +126,13 @@ router.post('/join/:challengeId', authenticateToken, async (req, res) => {
         }
 
         // Insert join record
-        const [result] = await db.promise().query(
+        const [result] = await db.query(
             'INSERT INTO user_challenges (user_id, challenge_id) VALUES (?, ?)',
             [userId, challengeId]
         );
 
         // Add notification for the user
-        const [notifResult] = await db.promise().query(
+        const [notifResult] = await db.query(
             'INSERT INTO notifications (user_id, title, message, type, reference_id, reference_type) VALUES (?, ?, ?, ?, ?, ?)',
             [userId, 'Challenge Joined', 'You have successfully joined a new challenge!', 'challenge', challengeId, 'challenge']
         );
@@ -166,7 +166,7 @@ router.put('/progress/:userChallengeId', authenticateToken, async (req, res) => 
 
     try {
         // Ensure user owns this user_challenge
-        const [uc] = await db.promise().query('SELECT user_id FROM user_challenges WHERE id = ?', [userChallengeId]);
+        const [uc] = await db.query('SELECT user_id FROM user_challenges WHERE id = ?', [userChallengeId]);
         if (uc.length === 0) {
             return res.status(404).json({ message: 'User challenge not found' });
         }
@@ -174,7 +174,7 @@ router.put('/progress/:userChallengeId', authenticateToken, async (req, res) => 
             return res.status(403).json({ message: 'Access denied' });
         }
 
-        const [result] = await db.promise().query(
+        const [result] = await db.query(
             'UPDATE user_challenges SET progress = ? WHERE id = ?',
             [progress, userChallengeId]
         );
@@ -193,7 +193,7 @@ router.put('/complete/:userChallengeId', authenticateToken, async (req, res) => 
 
     try {
         // Ensure user owns this user_challenge
-        const [uc] = await db.promise().query('SELECT user_id, status FROM user_challenges WHERE id = ?', [userChallengeId]);
+        const [uc] = await db.query('SELECT user_id, status FROM user_challenges WHERE id = ?', [userChallengeId]);
         if (uc.length === 0) {
             return res.status(404).json({ message: 'User challenge not found' });
         }
@@ -205,7 +205,7 @@ router.put('/complete/:userChallengeId', authenticateToken, async (req, res) => 
         }
 
         // Fetch challenge details to credit user
-        const [challengeInfo] = await db.promise().query(
+        const [challengeInfo] = await db.query(
             `SELECT c.points_reward, c.co2_saving_kg, c.title 
              FROM user_challenges uc 
              JOIN challenges c ON uc.challenge_id = c.id 
@@ -225,24 +225,24 @@ router.put('/complete/:userChallengeId', authenticateToken, async (req, res) => 
         const treesToPlant = isTreeChallenge ? 1 : 0;
 
         // Perform updates
-        await db.promise().query(
+        await db.query(
             'UPDATE user_challenges SET status = \'completed\', completed_at = NOW() WHERE id = ?',
             [userChallengeId]
         );
 
-        await db.promise().query(
+        await db.query(
             'UPDATE users SET eco_points = eco_points + ?, carbon_saved_kg = carbon_saved_kg + ?, trees_planted = trees_planted + ? WHERE id = ?',
             [points_reward || 0, co2_saving_kg || 0, treesToPlant, userId]
         );
 
         // Log carbon activity
-        await db.promise().query(
+        await db.query(
             'INSERT INTO carbon_logs (user_id, amount_kg, source) VALUES (?, ?, ?)',
             [userId, co2_saving_kg || 0, `Completed: ${title}`]
         );
 
         // Add notification for completion
-        const [notifResult] = await db.promise().query(
+        const [notifResult] = await db.query(
             'INSERT INTO notifications (user_id, title, message, type, reference_id, reference_type) VALUES (?, ?, ?, ?, ?, ?)',
             [userId, 'Challenge Completed!', `Congratulations! You saved ${co2_saving_kg}kg CO2 and earned ${points_reward} points.`, 'challenge', userChallengeId, 'challenge_completion']
         );

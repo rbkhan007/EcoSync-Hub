@@ -8,7 +8,7 @@ const router = express.Router();
 router.get('/', authenticateToken, async (req, res) => {
     const userId = req.user.id;
     try {
-        const [notifications] = await db.promise().query(
+        const [notifications] = await db.query(
             'SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC',
             [userId]
         );
@@ -23,7 +23,7 @@ router.put('/:id/read', authenticateToken, async (req, res) => {
     const userId = req.user.id;
     const { id } = req.params;
     try {
-        const [result] = await db.promise().query(
+        const [result] = await db.query(
             'UPDATE notifications SET is_read = TRUE WHERE id = ? AND user_id = ?',
             [id, userId]
         );
@@ -41,7 +41,7 @@ router.delete('/:id', authenticateToken, async (req, res) => {
     const userId = req.user.id;
     const { id } = req.params;
     try {
-        const [result] = await db.promise().query(
+        const [result] = await db.query(
             'DELETE FROM notifications WHERE id = ? AND user_id = ?',
             [id, userId]
         );

@@ -11,7 +11,7 @@ router.use(isAdmin);
 // Get list of all tables in the database
 router.get('/tables', async (req, res) => {
     try {
-        const [tables] = await db.promise().query('SHOW TABLES');
+        const [tables] = await db.query('SHOW TABLES');
         const tableName = `Tables_in_${process.env.DB_NAME || 'ecosync_hub'}`;
         const tableList = tables.map(t => t[tableName]);
 
@@ -19,7 +19,7 @@ router.get('/tables', async (req, res) => {
         const tablesWithCounts = await Promise.all(
             tableList.map(async (table) => {
                 try {
-                    const [countResult] = await db.promise().query(`SELECT COUNT(*) as count FROM ??`, [table]);
+                    const [countResult] = await db.query(`SELECT COUNT(*) as count FROM ??`, [table]);
                     return { name: table, count: countResult[0].count };
                 } catch (err) {
                     return { name: table, count: 0 };
@@ -40,7 +40,7 @@ router.get('/tables/:tableName', async (req, res) => {
 
     try {
         // Get table structure
-        const [columns] = await db.promise().query('DESCRIBE ??', [tableName]);
+        const [columns] = await db.query('DESCRIBE ??', [tableName]);
 
         // Build search query
         let searchCondition = '';
@@ -69,13 +69,13 @@ router.get('/tables/:tableName', async (req, res) => {
 
         // Get total count
         const countQuery = `SELECT COUNT(*) as total FROM ??${searchCondition}`;
-        const [countResult] = await db.promise().query(countQuery, searchParams.slice(0, searchParams.length - (sortBy ? 1 : 0)));
+        const [countResult] = await db.query(countQuery, searchParams.slice(0, searchParams.length - (sortBy ? 1 : 0)));
         const total = countResult[0].total;
 
         // Get paginated data
         const offset = (parseInt(page) - 1) * parseInt(limit);
         const dataQuery = `SELECT * FROM ??${searchCondition}${sortQuery} LIMIT ? OFFSET ?`;
-        const [data] = await db.promise().query(dataQuery, [...searchParams, parseInt(limit), offset]);
+        const [data] = await db.query(dataQuery, [...searchParams, parseInt(limit), offset]);
 
         res.json({
             tableName,
@@ -107,7 +107,7 @@ router.post('/tables/:tableName', async (req, res) => {
 
     try {
         // Remove auto-increment fields
-        const [columns] = await db.promise().query('DESCRIBE ??', [tableName]);
+        const [columns] = await db.query('DESCRIBE ??', [tableName]);
         const autoIncrementField = columns.find(col => col.Extra.includes('auto_increment'));
         if (autoIncrementField) {
             delete data[autoIncrementField.Field];
@@ -118,7 +118,7 @@ router.post('/tables/:tableName', async (req, res) => {
         const placeholders = fields.map(() => '?').join(', ');
 
         const query = `INSERT INTO ?? (${fields.map(() => '??').join(', ')}) VALUES (${placeholders})`;
-        const [result] = await db.promise().query(query, [tableName, ...fields, ...values]);
+        const [result] = await db.query(query, [tableName, ...fields, ...values]);
 
         res.json({ message: 'Record created successfully', insertId: result.insertId });
     } catch (error) {
@@ -133,7 +133,7 @@ router.put('/tables/:tableName/:id', async (req, res) => {
 
     try {
         // Get primary key field
-        const [columns] = await db.promise().query('DESCRIBE ??', [tableName]);
+        const [columns] = await db.query('DESCRIBE ??', [tableName]);
         const primaryKey = columns.find(col => col.Key === 'PRI');
 
         if (!primaryKey) {
@@ -155,7 +155,7 @@ router.put('/tables/:tableName/:id', async (req, res) => {
         });
         params.push(primaryKey.Field, id);
 
-        const [result] = await db.promise().query(query, params);
+        const [result] = await db.query(query, params);
 
         if (result.affectedRows === 0) {
             return res.status(404).json({ message: 'Record not found' });
@@ -173,7 +173,7 @@ router.delete('/tables/:tableName/:id', async (req, res) => {
 
     try {
         // Get primary key field
-        const [columns] = await db.promise().query('DESCRIBE ??', [tableName]);
+        const [columns] = await db.query('DESCRIBE ??', [tableName]);
         const primaryKey = columns.find(col => col.Key === 'PRI');
 
         if (!primaryKey) {
@@ -181,7 +181,7 @@ router.delete('/tables/:tableName/:id', async (req, res) => {
         }
 
         const query = `DELETE FROM ?? WHERE ?? = ?`;
-        const [result] = await db.promise().query(query, [tableName, primaryKey.Field, id]);
+        const [result] = await db.query(query, [tableName, primaryKey.Field, id]);
 
         if (result.affectedRows === 0) {
             return res.status(404).json({ message: 'Record not found' });
@@ -203,7 +203,7 @@ router.post('/tables/:tableName/bulk-delete', async (req, res) => {
     }
 
     try {
-        const [columns] = await db.promise().query('DESCRIBE ??', [tableName]);
+        const [columns] = await db.query('DESCRIBE ??', [tableName]);
         const primaryKey = columns.find(col => col.Key === 'PRI');
 
         if (!primaryKey) {
@@ -212,7 +212,7 @@ router.post('/tables/:tableName/bulk-delete', async (req, res) => {
 
         const placeholders = ids.map(() => '?').join(', ');
         const query = `DELETE FROM ?? WHERE ?? IN (${placeholders})`;
-        const [result] = await db.promise().query(query, [tableName, primaryKey.Field, ...ids]);
+        const [result] = await db.query(query, [tableName, primaryKey.Field, ...ids]);
 
         res.json({ message: `${result.affectedRows} record(s) deleted successfully` });
     } catch (error) {

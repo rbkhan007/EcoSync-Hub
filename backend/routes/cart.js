@@ -8,7 +8,7 @@ const router = express.Router();
 router.get('/', authenticateToken, async (req, res) => {
     const userId = req.user.id;
     try {
-        const [cartItems] = await db.promise().query(
+        const [cartItems] = await db.query(
             `SELECT ci.id, ci.quantity, p.id as product_id, p.name, p.price, p.image_url
        FROM cart_items ci
        JOIN products p ON ci.product_id = p.id
@@ -32,21 +32,21 @@ router.post('/', authenticateToken, async (req, res) => {
 
     try {
         // Check if item already in cart
-        const [existing] = await db.promise().query(
+        const [existing] = await db.query(
             'SELECT id, quantity FROM cart_items WHERE user_id = ? AND product_id = ?',
             [userId, product_id]
         );
 
         if (existing.length > 0) {
             // Update quantity
-            await db.promise().query(
+            await db.query(
                 'UPDATE cart_items SET quantity = quantity + ? WHERE id = ?',
                 [quantity, existing[0].id]
             );
             res.json({ message: 'Cart updated' });
         } else {
             // Add new item
-            await db.promise().query(
+            await db.query(
                 'INSERT INTO cart_items (user_id, product_id, quantity) VALUES (?, ?, ?)',
                 [userId, product_id, quantity]
             );
@@ -68,7 +68,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
     }
 
     try {
-        const [result] = await db.promise().query(
+        const [result] = await db.query(
             'UPDATE cart_items SET quantity = ? WHERE id = ? AND user_id = ?',
             [quantity, id, userId]
         );
@@ -87,7 +87,7 @@ router.delete('/:id', authenticateToken, async (req, res) => {
     const { id } = req.params;
 
     try {
-        const [result] = await db.promise().query(
+        const [result] = await db.query(
             'DELETE FROM cart_items WHERE id = ? AND user_id = ?',
             [id, userId]
         );

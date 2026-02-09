@@ -8,7 +8,7 @@ const router = express.Router();
 router.get('/', authenticateToken, async (req, res) => {
     const userId = req.user.id;
     try {
-        const [friends] = await db.promise().query(
+        const [friends] = await db.query(
             `SELECT u.id, u.username, u.avatar_url, f.status, f.created_at
              FROM friends f
              JOIN users u ON (CASE WHEN f.user_id_1 = ? THEN f.user_id_2 = u.id ELSE f.user_id_1 = u.id END)
@@ -25,7 +25,7 @@ router.get('/', authenticateToken, async (req, res) => {
 router.get('/requests', authenticateToken, async (req, res) => {
     const userId = req.user.id;
     try {
-        const [requests] = await db.promise().query(
+        const [requests] = await db.query(
             `SELECT u.id, u.username, u.avatar_url, f.id as request_id, f.created_at
              FROM friends f
              JOIN users u ON f.action_user_id = u.id
@@ -51,7 +51,7 @@ router.post('/request', authenticateToken, async (req, res) => {
 
     try {
         // Check if relationship already exists
-        const [existing] = await db.promise().query(
+        const [existing] = await db.query(
             'SELECT * FROM friends WHERE user_id_1 = ? AND user_id_2 = ?',
             [user1, user2]
         );
@@ -60,13 +60,13 @@ router.post('/request', authenticateToken, async (req, res) => {
             return res.status(400).json({ message: 'Relationship already exists' });
         }
 
-        await db.promise().query(
+        await db.query(
             'INSERT INTO friends (user_id_1, user_id_2, status, action_user_id) VALUES (?, ?, ?, ?)',
             [user1, user2, 'pending', userId]
         );
 
         // Add notification for the receiver
-        const [notifResult] = await db.promise().query(
+        const [notifResult] = await db.query(
             'INSERT INTO notifications (user_id, title, message, type, reference_id, reference_type) VALUES (?, ?, ?, ?, ?, ?)',
             [friend_id, 'New Friend Request', `${req.user.username} sent you a friend request`, 'friend', userId, 'friend_request']
         );
@@ -95,7 +95,7 @@ router.post('/accept/:id', authenticateToken, async (req, res) => {
     const { id } = req.params; // Relationship ID
 
     try {
-        const [rows] = await db.promise().query(
+        const [rows] = await db.query(
             'SELECT * FROM friends WHERE id = ?',
             [id]
         );
@@ -114,14 +114,14 @@ router.post('/accept/:id', authenticateToken, async (req, res) => {
             return res.status(403).json({ message: 'Unauthorized' });
         }
 
-        await db.promise().query(
+        await db.query(
             'UPDATE friends SET status = ?, action_user_id = ? WHERE id = ?',
             ['accepted', userId, id]
         );
 
         // Notify the requester
         const requesterId = friendRequest.action_user_id;
-        const [notifResult] = await db.promise().query(
+        const [notifResult] = await db.query(
             'INSERT INTO notifications (user_id, title, message, type, reference_id, reference_type) VALUES (?, ?, ?, ?, ?, ?)',
             [requesterId, 'Friend Request Accepted', `${req.user.username} accepted your friend request`, 'friend', id, 'friend_acceptance']
         );

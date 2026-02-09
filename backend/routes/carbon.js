@@ -8,7 +8,7 @@ const router = express.Router();
 router.get('/', authenticateToken, async (req, res) => {
     const userId = req.user.id;
     try {
-        const [logs] = await db.promise().query(
+        const [logs] = await db.query(
             'SELECT * FROM carbon_logs WHERE user_id = ? ORDER BY logged_at DESC',
             [userId]
         );
@@ -28,7 +28,7 @@ router.post('/', authenticateToken, async (req, res) => {
     }
 
     try {
-        const [result] = await db.promise().query(
+        const [result] = await db.query(
             'INSERT INTO carbon_logs (user_id, amount_kg, source) VALUES (?, ?, ?)',
             [userId, amount_kg, source]
         );
@@ -42,7 +42,7 @@ router.post('/', authenticateToken, async (req, res) => {
 router.get('/summary', authenticateToken, async (req, res) => {
     const userId = req.user.id;
     try {
-        const [summary] = await db.promise().query(
+        const [summary] = await db.query(
             'SELECT SUM(amount_kg) as total_saved, COUNT(*) as activities FROM carbon_logs WHERE user_id = ?',
             [userId]
         );

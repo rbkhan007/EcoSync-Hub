@@ -11,7 +11,7 @@ router.use(isAdmin);
 // Get pending sellers (assume users with role 'user' are pending sellers)
 router.get('/sellers/pending', async (req, res) => {
     try {
-        const [users] = await db.promise().query('SELECT id, username, email, avatar_url FROM users WHERE role = "user"');
+        const [users] = await db.query('SELECT id, username, email, avatar_url FROM users WHERE role = "user"');
         res.json(users);
     } catch (error) {
         res.status(500).json({ message: 'Server error', error: error.message });
@@ -22,7 +22,7 @@ router.get('/sellers/pending', async (req, res) => {
 router.post('/sellers/:id/approve', async (req, res) => {
     const { id } = req.params;
     try {
-        const [result] = await db.promise().query(
+        const [result] = await db.query(
             'UPDATE users SET role = "seller" WHERE id = ? AND role = "user"',
             [id]
         );
@@ -31,7 +31,7 @@ router.post('/sellers/:id/approve', async (req, res) => {
         }
 
         // Add notification for the user
-        const [notifResult] = await db.promise().query(
+        const [notifResult] = await db.query(
             'INSERT INTO notifications (user_id, title, message, type) VALUES (?, ?, ?, ?)',
             [id, 'Seller Approved', 'Congratulations! You are now a verified seller.', 'info']
         );
@@ -57,7 +57,7 @@ router.post('/sellers/:id/approve', async (req, res) => {
 // Get pending products
 router.get('/products/pending', async (req, res) => {
     try {
-        const [products] = await db.promise().query('SELECT * FROM products WHERE status = "pending"');
+        const [products] = await db.query('SELECT * FROM products WHERE status = "pending"');
         res.json(products);
     } catch (error) {
         res.status(500).json({ message: 'Server error', error: error.message });
@@ -68,7 +68,7 @@ router.get('/products/pending', async (req, res) => {
 router.post('/products/:id/approve', async (req, res) => {
     const { id } = req.params;
     try {
-        const [result] = await db.promise().query(
+        const [result] = await db.query(
             'UPDATE products SET status = "approved" WHERE id = ? AND status = "pending"',
             [id]
         );
@@ -77,10 +77,10 @@ router.post('/products/:id/approve', async (req, res) => {
         }
 
         // Get seller_id to notify
-        const [products] = await db.promise().query('SELECT seller_id, name FROM products WHERE id = ?', [id]);
+        const [products] = await db.query('SELECT seller_id, name FROM products WHERE id = ?', [id]);
         if (products.length > 0 && products[0].seller_id) {
             const sellerId = products[0].seller_id;
-            const [notifResult] = await db.promise().query(
+            const [notifResult] = await db.query(
                 'INSERT INTO notifications (user_id, title, message, type, reference_id, reference_type) VALUES (?, ?, ?, ?, ?, ?)',
                 [sellerId, 'Product Approved', `Your product "${products[0].name}" has been approved.`, 'success', id, 'product']
             );
@@ -108,7 +108,7 @@ router.post('/products/:id/approve', async (req, res) => {
 router.post('/products/:id/reject', async (req, res) => {
     const { id } = req.params;
     try {
-        const [result] = await db.promise().query(
+        const [result] = await db.query(
             'UPDATE products SET status = "rejected" WHERE id = ? AND status = "pending"',
             [id]
         );
@@ -139,10 +139,10 @@ router.post('/posts/:id/reject', (req, res) => {
 // Get overall platform stats
 router.get('/stats', async (req, res) => {
     try {
-        const [userCount] = await db.promise().query('SELECT COUNT(*) as count FROM users');
-        const [productCount] = await db.promise().query('SELECT COUNT(*) as count FROM products');
-        const [orderCount] = await db.promise().query('SELECT COUNT(*) as count FROM orders');
-        const [totalCO2] = await db.promise().query('SELECT SUM(carbon_saved_kg) as total FROM users');
+        const [userCount] = await db.query('SELECT COUNT(*) as count FROM users');
+        const [productCount] = await db.query('SELECT COUNT(*) as count FROM products');
+        const [orderCount] = await db.query('SELECT COUNT(*) as count FROM orders');
+        const [totalCO2] = await db.query('SELECT SUM(carbon_saved_kg) as total FROM users');
 
         res.json({
             users: userCount[0].count,
@@ -165,7 +165,7 @@ router.put('/users/:id/role', async (req, res) => {
     }
 
     try {
-        const [result] = await db.promise().query('UPDATE users SET role = ? WHERE id = ?', [role, id]);
+        const [result] = await db.query('UPDATE users SET role = ? WHERE id = ?', [role, id]);
         if (result.affectedRows === 0) {
             return res.status(404).json({ message: 'User not found' });
         }
@@ -180,7 +180,7 @@ router.delete('/users/:id', async (req, res) => {
     const { id } = req.params;
 
     try {
-        const [result] = await db.promise().query('DELETE FROM users WHERE id = ?', [id]);
+        const [result] = await db.query('DELETE FROM users WHERE id = ?', [id]);
         if (result.affectedRows === 0) {
             return res.status(404).json({ message: 'User not found' });
         }

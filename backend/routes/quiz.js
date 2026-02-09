@@ -7,10 +7,10 @@ const router = express.Router();
 // Get all quizzes
 router.get('/', authenticateToken, async (req, res) => {
     try {
-        const [quizzes] = await db.promise().query('SELECT * FROM quizzes ORDER BY created_at DESC');
+        const [quizzes] = await db.query('SELECT * FROM quizzes ORDER BY created_at DESC');
 
         // Check which quizzes the user has completed
-        const [completed] = await db.promise().query(
+        const [completed] = await db.query(
             'SELECT quiz_id FROM user_quizzes WHERE user_id = ?',
             [req.user.id]
         );
@@ -32,7 +32,7 @@ router.get('/', authenticateToken, async (req, res) => {
 router.get('/:id/questions', authenticateToken, async (req, res) => {
     const { id } = req.params;
     try {
-        const [questions] = await db.promise().query(
+        const [questions] = await db.query(
             'SELECT id, question, option_a, option_b, option_c, option_d FROM quiz_questions WHERE quiz_id = ?',
             [id]
         );
@@ -50,7 +50,7 @@ router.post('/:id/submit', authenticateToken, async (req, res) => {
 
     try {
         // Check if already completed
-        const [existing] = await db.promise().query(
+        const [existing] = await db.query(
             'SELECT id FROM user_quizzes WHERE user_id = ? AND quiz_id = ?',
             [userId, id]
         );
@@ -59,7 +59,7 @@ router.post('/:id/submit', authenticateToken, async (req, res) => {
         }
 
         // Fetch correct answers
-        const [questions] = await db.promise().query(
+        const [questions] = await db.query(
             'SELECT id, correct_option FROM quiz_questions WHERE quiz_id = ?',
             [id]
         );
@@ -77,17 +77,17 @@ router.post('/:id/submit', authenticateToken, async (req, res) => {
 
         if (passed) {
             // Fetch quiz reward
-            const [quiz] = await db.promise().query('SELECT points_reward FROM quizzes WHERE id = ?', [id]);
+            const [quiz] = await db.query('SELECT points_reward FROM quizzes WHERE id = ?', [id]);
             const points = quiz[0].points_reward;
 
             // Credit user
-            await db.promise().query(
+            await db.query(
                 'UPDATE users SET eco_points = eco_points + ? WHERE id = ?',
                 [points, userId]
             );
 
             // Record completion
-            await db.promise().query(
+            await db.query(
                 'INSERT INTO user_quizzes (user_id, quiz_id, score, points_earned) VALUES (?, ?, ?, ?)',
                 [userId, id, score, points]
             );
