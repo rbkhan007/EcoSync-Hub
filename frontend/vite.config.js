@@ -9,16 +9,9 @@ export default defineConfig({
     emptyOutDir: true,
     rollupOptions: {
       output: {
-        manualChunks(id) {
-          if (id.includes('node_modules')) {
-            if (id.includes('@mui')) {
-              return 'vendor_mui';
-            }
-            if (id.includes('react')) {
-              return 'vendor_react';
-            }
-            return 'vendor';
-          }
+        manualChunks: {
+          'vendor_react': ['react', 'react-dom', 'react-router-dom'],
+          'vendor_mui': ['@mui/material', '@mui/icons-material', '@emotion/react', '@emotion/styled']
         }
       }
     }
