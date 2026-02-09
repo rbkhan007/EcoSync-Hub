@@ -29,9 +29,9 @@ services:
   - type: static
     name: ecosync-hub-frontend
     plan: free
-    buildCommand: npm install --prefix frontend && npm run build --prefix frontend
+    buildCommand: npm run build
     # Use explicit path for static site output
-    staticPublishPath: frontend/dist
+    staticPublishPath: frontend/build
     domains:
       - ecosync-hub.com
     envVars:
