@@ -9,8 +9,9 @@ services:
     name: ecosync-hub-backend
     env: node
     plan: free
-    buildCommand: cd backend && npm install
-    startCommand: cd backend && node server.js
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: node server.js
     healthCheckPath: /health
     envVars:
       - key: DATABASE_URL
@@ -24,11 +25,12 @@ services:
       - key: NODE_ENV
         value: production
 
-  # Frontend Static Site
-  - type: static
-    name: ecosync-hub-frontend
-    buildCommand: cd frontend && npm install && npm run build
-    staticPublishPath: frontend/dist
+staticSites:
+  - name: ecosync-hub-frontend
+    plan: free
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    publishPath: dist
     domains:
       - ecosync-hub.com
     envVars:
