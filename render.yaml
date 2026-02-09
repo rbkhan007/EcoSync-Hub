@@ -25,9 +25,8 @@ services:
         value: production
 
   # Frontend Static Site
-  - type: web
+  - type: static
     name: ecosync-hub-frontend
-    env: static
     buildCommand: cd frontend && npm install && npm run build
     staticPublishPath: frontend/dist
     domains:
