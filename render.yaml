@@ -23,6 +23,7 @@ services:
       - key: NODE_ENV
         value: production
 
+  # Frontend Static Site
   - type: web
     name: ecosync-hub-frontend
     env: static
@@ -35,5 +36,6 @@ services:
         fromService:
           type: web
           name: ecosync-hub-backend
-          property: url
+          property: host
+        prefix: https://
         suffix: /api
