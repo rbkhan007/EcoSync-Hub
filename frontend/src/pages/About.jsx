@@ -1,7 +1,7 @@
 import React from 'react';
 import { Box, Typography, Grid, Card, CardContent, Avatar, Container } from '@mui/material';
 import PublicIcon from '@mui/icons-material/Public';
-import EcoIcon from '@mui/icons-material/Eco';
+import EcoIcon from '@mui/icons-material/EnergySavingsLeaf';
 import GroupIcon from '@mui/icons-material/Group';
 
 const About = () => {
