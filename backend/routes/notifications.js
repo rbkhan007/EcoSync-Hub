@@ -9,7 +9,7 @@ router.get('/', authenticateToken, async (req, res) => {
     const userId = req.user.id;
     try {
         const [notifications] = await db.query(
-            'SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC',
+            'SELECT id, type, target_id, message, is_read, created_at FROM notifications WHERE user_id = ? ORDER BY created_at DESC',
             [userId]
         );
         res.json(notifications);

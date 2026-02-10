@@ -1,207 +1,167 @@
-const { Pool } = require('pg');
 const path = require('path');
 require('dotenv').config({ path: path.resolve(__dirname, '.env') });
 
-const pool = new Pool({
-    connectionString: process.env.DATABASE_URL || `postgresql://${process.env.DB_USER}:${process.env.DB_PASSWORD}@${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`,
-    ssl: {
-        rejectUnauthorized: false
-    }
-});
+const DB_TYPE = process.env.DB_TYPE || (process.env.DATABASE_URL?.includes('postgres') ? 'postgres' : 'mysql');
 
-// Test the connection on startup with retries for production
-const testConnection = async (retries = 5, delay = 5000) => {
-    for (let i = 0; i < retries; i++) {
-        try {
-            const res = await pool.query('SELECT NOW()');
-            console.log('Successfully connected to PostgreSQL!', res.rows[0]);
-            return;
-        } catch (err) {
-            console.error(`Database connection attempt ${i + 1} failed:`, err.message);
-            if (i < retries - 1) {
-                console.log(`Retrying in ${delay / 1000}s...`);
-                await new Promise(resolve => setTimeout(resolve, delay));
-            }
+let pool;
+
+if (DB_TYPE === 'postgres') {
+    const { Pool } = require('pg');
+    pool = new Pool({
+        connectionString: process.env.DATABASE_URL || `postgresql://${process.env.DB_USER}:${process.env.DB_PASSWORD}@${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`,
+        ssl: {
+            rejectUnauthorized: false
         }
-    }
-    console.error('Final database connection attempt failed. Service may be unstable.');
-};
+    });
 
-testConnection();
+    console.log('Database connecting to: PostgreSQL');
+} else {
+    const mysql = require('mysql2');
+    pool = mysql.createPool({
+        host: process.env.DB_HOST || 'localhost',
+        port: process.env.DB_PORT || 3306,
+        user: process.env.DB_USER || 'root',
+        password: process.env.DB_PASSWORD || '',
+        database: process.env.DB_NAME || 'ecosync_hub',
+        waitForConnections: true,
+        connectionLimit: 10,
+        queueLimit: 0
+    });
 
-module.exports = {
-    query: async (text, params = []) => {
-        let index = 1;
+    console.log('Database connecting to: MySQL (XAMPP/Local)');
+}
 
-        // Handle identifier placeholders (??)
-        let processedText = text;
-        const processedParams = [];
+// Unified Query Interface
+const query = async (text, params = []) => {
+    if (DB_TYPE === 'postgres') {
+        const translate = (sql, sqlParams) => {
+            let index = 1;
+            const processedParams = [];
+            const parts = sql.split(/(\?\?|\?)/);
+            let paramIndex = 0;
+            let processedText = '';
 
-        // Match ?? vs ?
-        // This is a simple implementation; complex queries might need a more robust parser
-        const parts = text.split(/(\?\?|\?)/);
-        let paramIndex = 0;
-        processedText = '';
+            parts.forEach(part => {
+                if (part === '??') {
+                    const identifier = sqlParams[paramIndex++];
+                    processedText += `"${identifier}"`;
+                } else if (part === '?') {
+                    processedText += `$${index++}`;
+                    processedParams.push(sqlParams[paramIndex++]);
+                } else {
+                    processedText += part;
+                }
+            });
 
-        parts.forEach(part => {
-            if (part === '??') {
-                const identifier = params[paramIndex++];
-                processedText += `"${identifier}"`;
-            } else if (part === '?') {
-                processedText += `$${index++}`;
-                processedParams.push(params[paramIndex++]);
-            } else {
-                processedText += part;
+            // Handle metadata translations
+            let pgText = processedText.trim();
+            const upperText = pgText.toUpperCase();
+            const dbName = process.env.DB_NAME || 'ecosync_hub';
+
+            if (upperText === 'SHOW TABLES') {
+                pgText = `SELECT tablename as "Tables_in_${dbName}" FROM pg_catalog.pg_tables WHERE schemaname = 'public'`;
+            } else if (upperText.startsWith('DESCRIBE ')) {
+                const tableName = pgText.split(' ')[1].replace(/"/g, '');
+                pgText = `
+                    SELECT 
+                        cols.column_name as "Field", 
+                        cols.data_type as "Type", 
+                        cols.is_nullable as "Null", 
+                        CASE WHEN kcu.column_name IS NOT NULL THEN 'PRI' ELSE '' END as "Key", 
+                        cols.column_default as "Default", 
+                        CASE WHEN cols.column_default LIKE 'nextval%' THEN 'auto_increment' ELSE '' END as "Extra" 
+                    FROM information_schema.columns cols
+                    LEFT JOIN information_schema.key_column_usage kcu 
+                        ON cols.table_name = kcu.table_name 
+                        AND cols.column_name = kcu.column_name 
+                        AND kcu.constraint_name LIKE '%_pkey'
+                    WHERE cols.table_name = $1
+                `;
+                processedParams.length = 0;
+                processedParams.push(tableName);
             }
-        });
 
-        // Translate MySQL metadata queries
-        let pgText = processedText.trim();
-        const upperText = pgText.toUpperCase();
-        const dbName = process.env.DB_NAME || 'ecosync_hub';
+            const isInsert = upperText.startsWith('INSERT');
+            if (isInsert && !upperText.includes('RETURNING')) {
+                if (pgText.endsWith(';')) pgText = pgText.slice(0, -1);
+                pgText += ' RETURNING id';
+            }
 
-        if (upperText === 'SHOW TABLES') {
-            pgText = `SELECT tablename as "Tables_in_${dbName}", tablename as "Tables_in_defaultdb" FROM pg_catalog.pg_tables WHERE schemaname = 'public'`;
-        } else if (upperText.startsWith('DESCRIBE ')) {
-            const tableName = pgText.split(' ')[1].replace(/"/g, '');
-            pgText = `
-                SELECT 
-                    cols.column_name as "Field", 
-                    cols.data_type as "Type", 
-                    cols.is_nullable as "Null", 
-                    CASE WHEN kcu.column_name IS NOT NULL THEN 'PRI' ELSE '' END as "Key", 
-                    cols.column_default as "Default", 
-                    CASE WHEN cols.column_default LIKE 'nextval%' THEN 'auto_increment' ELSE '' END as "Extra" 
-                FROM information_schema.columns cols
-                LEFT JOIN information_schema.key_column_usage kcu 
-                    ON cols.table_name = kcu.table_name 
-                    AND cols.column_name = kcu.column_name 
-                    AND kcu.constraint_name LIKE '%_pkey'
-                WHERE cols.table_name = $1
-            `;
-            processedParams.length = 0;
-            processedParams.push(tableName);
-        }
+            return [pgText, processedParams];
+        };
 
+        const [processedText, processedParams] = translate(text, params);
+        const res = await pool.query(processedText, processedParams);
+
+        const upperText = text.trim().toUpperCase();
         const isInsert = upperText.startsWith('INSERT');
-        if (isInsert && !upperText.includes('RETURNING')) {
-            pgText += ' RETURNING id';
-        }
+        const isWrite = isInsert || upperText.startsWith('UPDATE') || upperText.startsWith('DELETE');
 
-        const res = await pool.query(pgText, processedParams);
-
-        if (isInsert || upperText.startsWith('UPDATE') || upperText.startsWith('DELETE')) {
-            const resultInfo = {
+        if (isWrite) {
+            return [{
                 insertId: (isInsert && res.rows.length > 0) ? res.rows[0].id : null,
                 affectedRows: res.rowCount,
                 rowCount: res.rowCount
-            };
-            return [resultInfo, res.fields];
+            }, res.fields];
         }
-
         return [res.rows, res.fields];
-    },
-    promise: function () {
-        return {
-            ...this,
-            getConnection: async () => {
+    } else {
+        // Native MySQL support for ? and ??
+        return pool.promise().query(text, params);
+    }
+};
+
+module.exports = {
+    query,
+    promise: () => ({
+        query,
+        getConnection: async () => {
+            if (DB_TYPE === 'postgres') {
                 const client = await pool.connect();
-                // Add mysql2 compatibility methods to the client
-                const connectionShim = {
-                    query: async (text, params = []) => {
-                        // Reuse the same logic from the main query method
-                        const [processedText, processedParams] = await this.translate(text, params);
+                return {
+                    query: async (text, params) => {
+                        // Reuse translation logic (simplified here)
+                        const [processedText, processedParams] = await module.exports.translate(text, params);
                         const res = await client.query(processedText, processedParams);
-
-                        const upperText = processedText.trim().toUpperCase();
-                        const isInsert = upperText.startsWith('INSERT');
-
-                        if (isInsert || upperText.startsWith('UPDATE') || upperText.startsWith('DELETE')) {
-                            const resultInfo = {
-                                insertId: (isInsert && res.rows.length > 0) ? res.rows[0].id : null,
-                                affectedRows: res.rowCount,
-                                rowCount: res.rowCount
-                            };
-                            return [resultInfo, res.fields];
+                        const upperText = text.trim().toUpperCase();
+                        if (upperText.startsWith('INSERT') || upperText.startsWith('UPDATE') || upperText.startsWith('DELETE')) {
+                            return [{
+                                insertId: (upperText.startsWith('INSERT') && res.rows.length > 0) ? res.rows[0].id : null,
+                                affectedRows: res.rowCount
+                            }];
                         }
-                        return [res.rows, res.fields];
+                        return [res.rows];
                     },
                     beginTransaction: () => client.query('BEGIN'),
                     commit: () => client.query('COMMIT'),
                     rollback: () => client.query('ROLLBACK'),
-                    release: () => client.release(),
-                    // mysql2 compatibility
-                    beginTransaction: async () => await client.query('BEGIN'),
-                    commit: async () => await client.query('COMMIT'),
-                    rollback: async () => await client.query('ROLLBACK'),
                     release: () => client.release()
                 };
-                return connectionShim;
+            } else {
+                return pool.promise().getConnection();
             }
-        };
-    },
-    // Helper to reuse translation logic
-    translate: async function (text, params = []) {
-        if (typeof text !== 'string') return [text, params];
-
-        // Replace backticks with double quotes for PostgreSQL compatibility
-        let processedText = text.replace(/`/g, '"');
-
+        }
+    }),
+    translate: async (sql, sqlParams) => {
+        // Exported helper for specific uses
+        if (DB_TYPE !== 'postgres') return [sql, sqlParams];
         let index = 1;
         const processedParams = [];
-        const parts = processedText.split(/(\?\?|\?)/);
+        const parts = sql.split(/(\?\?|\?)/);
         let paramIndex = 0;
-        processedText = '';
-
+        let processedText = '';
         parts.forEach(part => {
             if (part === '??') {
-                const identifier = params[paramIndex++];
-                processedText += `"${identifier}"`;
+                processedText += `"${sqlParams[paramIndex++]}"`;
             } else if (part === '?') {
                 processedText += `$${index++}`;
-                processedParams.push(params[paramIndex++]);
+                processedParams.push(sqlParams[paramIndex++]);
             } else {
                 processedText += part;
             }
         });
-
-        let pgText = processedText.trim();
-        const upperText = pgText.toUpperCase();
-        const dbName = process.env.DB_NAME || 'ecosync_hub';
-
-        if (upperText === 'SHOW TABLES') {
-            pgText = `SELECT tablename as "Tables_in_${dbName}", tablename as "Tables_in_defaultdb" FROM pg_catalog.pg_tables WHERE schemaname = 'public'`;
-        } else if (upperText.startsWith('DESCRIBE ')) {
-            const tableName = pgText.split(' ')[1].replace(/"/g, '');
-            pgText = `
-                SELECT 
-                    cols.column_name as "Field", 
-                    cols.data_type as "Type", 
-                    cols.is_nullable as "Null", 
-                    CASE WHEN kcu.column_name IS NOT NULL THEN 'PRI' ELSE '' END as "Key", 
-                    cols.column_default as "Default", 
-                    CASE WHEN cols.column_default LIKE 'nextval%' THEN 'auto_increment' ELSE '' END as "Extra" 
-                FROM information_schema.columns cols
-                LEFT JOIN information_schema.key_column_usage kcu 
-                    ON cols.table_name = kcu.table_name 
-                    AND cols.column_name = kcu.column_name 
-                    AND kcu.constraint_name LIKE '%_pkey'
-                WHERE cols.table_name = $1
-            `;
-            processedParams.length = 0;
-            processedParams.push(tableName);
-        }
-
-        const isInsert = upperText.startsWith('INSERT');
-        if (isInsert && !upperText.includes('RETURNING')) {
-            // Remove trailing semicolon before appending RETURNING
-            if (pgText.endsWith(';')) {
-                pgText = pgText.slice(0, -1);
-            }
-            pgText += ' RETURNING id';
-        }
-
-        return [pgText, processedParams];
+        return [processedText, processedParams];
     },
     pool
 };
+

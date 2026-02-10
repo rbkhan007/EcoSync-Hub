@@ -5,33 +5,34 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 const SOCKET_URL = API_BASE_URL.replace('/api', '');
 
 export const useRealtime = () => {
-    const [lastUpdate, setLastUpdate] = useState(null);
+    const [socket, setSocket] = useState(null);
+    const [isConnected, setIsConnected] = useState(false);
 
     useEffect(() => {
-        const socket = io(SOCKET_URL, {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+
+        const socketInstance = io(SOCKET_URL, {
             transports: ['websocket'],
-            auth: {
-                token: localStorage.getItem('token')
-            }
+            auth: { token }
         });
 
-        socket.on('connect', () => {
+        socketInstance.on('connect', () => {
             console.log('Real-time socket connected');
+            setIsConnected(true);
         });
 
-        socket.on('db_update', (payload) => {
-            console.log('Real-time DB Update received:', payload);
-            setLastUpdate(payload);
-        });
-
-        socket.on('disconnect', () => {
+        socketInstance.on('disconnect', () => {
             console.log('Real-time socket disconnected');
+            setIsConnected(false);
         });
+
+        setSocket(socketInstance);
 
         return () => {
-            socket.disconnect();
+            socketInstance.disconnect();
         };
     }, []);
 
-    return lastUpdate;
+    return { socket, isConnected };
 };

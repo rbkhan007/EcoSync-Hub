@@ -25,6 +25,7 @@ const Messages = lazy(() => import('./pages/Messages'));
 const Seller = lazy(() => import('./pages/Seller'));
 const Admin = lazy(() => import('./pages/Admin'));
 const Community = lazy(() => import('./pages/Community'));
+const Feed = lazy(() => import('./pages/Feed'));
 const Payment = lazy(() => import('./pages/Payment'));
 const Wishlist = lazy(() => import('./pages/Wishlist'));
 const Leaderboard = lazy(() => import('./pages/Leaderboard'));
@@ -35,6 +36,9 @@ const AddressBook = lazy(() => import('./pages/AddressBook'));
 const About = lazy(() => import('./pages/About'));
 const Contact = lazy(() => import('./pages/Contact'));
 const Quiz = lazy(() => import('./pages/Quiz'));
+const ReelsPage = lazy(() => import('./pages/ReelsPage'));
+const GroupsPage = lazy(() => import('./pages/GroupsPage'));
+const EventsPage = lazy(() => import('./pages/EventsPage'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 
 const LoadingScreen = () => (
@@ -74,6 +78,7 @@ function App() {
                 <Route path="/seller" element={<ProtectedRoute requiredRole="seller"><Seller /></ProtectedRoute>} />
                 <Route path="/admin" element={<ProtectedRoute requiredRole="admin"><Admin /></ProtectedRoute>} />
                 <Route path="/community" element={<Community />} />
+                <Route path="/feed" element={<ProtectedRoute><Feed /></ProtectedRoute>} />
                 <Route path="/payment" element={<ProtectedRoute><Payment /></ProtectedRoute>} />
                 <Route path="/wishlist" element={<ProtectedRoute><Wishlist /></ProtectedRoute>} />
                 <Route path="/leaderboard" element={<ProtectedRoute><Leaderboard /></ProtectedRoute>} />
@@ -82,6 +87,11 @@ function App() {
                 <Route path="/order/:id/receipt" element={<ProtectedRoute><OrderReceipt /></ProtectedRoute>} />
                 <Route path="/addresses" element={<ProtectedRoute><AddressBook /></ProtectedRoute>} />
                 <Route path="/quiz" element={<ProtectedRoute><Quiz /></ProtectedRoute>} />
+
+                {/* Social Routes */}
+                <Route path="/reels" element={<ProtectedRoute><ReelsPage /></ProtectedRoute>} />
+                <Route path="/groups" element={<ProtectedRoute><GroupsPage /></ProtectedRoute>} />
+                <Route path="/events" element={<ProtectedRoute><EventsPage /></ProtectedRoute>} />
 
                 {/* 404 Route */}
                 <Route path="*" element={<NotFound />} />

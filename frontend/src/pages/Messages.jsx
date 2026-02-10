@@ -10,7 +10,7 @@ import { getImageUrl } from '../utils/imageUtils';
 
 const Messages = () => {
     const [conversations, setConversations] = useState([]);
-    const [selectedUser, setSelectedUser] = useState(null);
+    const [selectedConv, setSelectedConv] = useState(null);
     const [messages, setMessages] = useState([]);
     const [newMessage, setNewMessage] = useState('');
     const [searchTerm, setSearchTerm] = useState('');
@@ -27,17 +27,16 @@ const Messages = () => {
     };
 
     const selectConversation = useCallback((conversation) => {
-        setSelectedUser(conversation);
-    }, []);
+        setSelectedConv(conversation);
+        if (socket && conversation.conversation_id) {
+            socket.emit('join_conversation', { conversation_id: conversation.conversation_id });
+        }
+    }, [socket]);
 
     const fetchConversations = useCallback(async () => {
         try {
             const response = await api.get('/messages/conversations');
-            // Deduplicate by other_user_id to prevent key errors
-            const uniqueConversations = response.data.filter((conv, index, self) =>
-                index === self.findIndex((c) => c.other_user_id === conv.other_user_id)
-            );
-            setConversations(uniqueConversations);
+            setConversations(response.data);
         } catch {
             console.error('Failed to load conversations');
         }
@@ -87,16 +86,26 @@ const Messages = () => {
     }, [userIdFromUrl, conversations, api, selectConversation]);
 
     useEffect(() => {
-        if (selectedUser) {
+        if (selectedConv) {
             const fetchMessages = async () => {
                 setLoading(true);
                 try {
-                    const response = await api.get(`/messages?with=${selectedUser.other_user_id}`);
+                    const endpoint = selectedConv.conversation_id
+                        ? `/messages/conversation/${selectedConv.conversation_id}`
+                        : `/messages?with=${selectedConv.other_user_id}`;
+
+                    const response = await api.get(endpoint);
                     setMessages(response.data);
-                    // Mark as read when opening conversation
-                    await api.post('/messages/mark-read', { with: selectedUser.other_user_id });
-                    fetchConversations(); // Update sidebar badges
-                    updateCounts(); // Update global counts including messageCount
+
+                    // Mark as read
+                    if (selectedConv.conversation_id) {
+                        await api.post(`/messages/conversation/${selectedConv.conversation_id}/read`);
+                    } else {
+                        await api.post('/messages/mark-read', { with: selectedConv.other_user_id });
+                    }
+
+                    fetchConversations();
+                    updateCounts();
                 } catch {
                     console.error('Failed to load messages');
                 } finally {
@@ -105,74 +114,63 @@ const Messages = () => {
             };
             fetchMessages();
         }
-    }, [selectedUser, api, fetchConversations]);
+    }, [selectedConv, api, fetchConversations, updateCounts]);
 
     useEffect(() => {
         if (socket) {
             const handleIncoming = async (message) => {
-                const isFromSelected = selectedUser && message.sender_id == selectedUser.other_user_id;
-                if (isFromSelected || message.receiver_id == selectedUser.other_user_id) {
+                // If it's for the currently selected conversation
+                const isCurrentConv = selectedConv && message.conversation_id === selectedConv.conversation_id;
+
+                if (isCurrentConv) {
                     setMessages(prev => [...prev, message]);
-                    if (isFromSelected) {
-                        try {
-                            await api.post('/messages/mark-read', { with: selectedUser.other_user_id });
-                            updateCounts();
-                        } catch (e) {
-                            console.error('Failed to mark as read', e);
-                        }
+                    try {
+                        await api.post(`/messages/conversation/${selectedConv.conversation_id}/read`);
+                    } catch (e) {
+                        console.error('Failed to mark as read', e);
                     }
                 }
-                fetchConversations();
-                updateCounts();
-            };
 
-            const handleOutgoing = (msg) => {
-                if (selectedUser && (msg.receiver_id == selectedUser.other_user_id)) {
-                    // Avoid duplicate if already added via optimistic update
-                    setMessages(prev => {
-                        if (prev.some(m => m.id === msg.id)) return prev;
-                        return [...prev, msg];
-                    });
-                }
                 fetchConversations();
                 updateCounts();
             };
 
             socket.on('new_message', handleIncoming);
-            socket.on('message_sent', handleOutgoing);
             return () => {
                 socket.off('new_message', handleIncoming);
-                socket.off('message_sent', handleOutgoing);
             };
         }
-    }, [socket, selectedUser, fetchConversations, api]);
+    }, [socket, selectedConv, fetchConversations, api, updateCounts]);
 
     useEffect(scrollToBottom, [messages]);
 
     const sendMessage = async (e) => {
         if (e) e.preventDefault();
-        if (!newMessage.trim() || !selectedUser) return;
+        if (!newMessage.trim() || !selectedConv) return;
 
-        const tempMsg = {
-            id: Date.now(),
-            sender_id: user.id,
-            receiver_id: selectedUser.other_user_id,
-            content: newMessage,
-            created_at: new Date().toISOString(),
-            is_optimistic: true
-        };
-
-        setMessages(prev => [...prev, tempMsg]);
         const msgContent = newMessage;
         setNewMessage('');
 
         try {
-            await api.post('/messages', { receiver_id: selectedUser.other_user_id, content: msgContent });
-            // Conversation fetch will happen via socket 'message_sent'
+            const payload = {
+                content: msgContent,
+                conversation_id: selectedConv.conversation_id,
+                receiver_id: selectedConv.other_user_id
+            };
+
+            if (socket) {
+                socket.emit('private_message', payload);
+            } else {
+                await api.post('/messages', payload);
+            }
+
+            // Note: optimistic update is handled by the socket 'new_message' or 'message_sent' usually,
+            // but for better UX we can add it here too if needed. 
+            // For now, let the backend/socket roundtrip handle it to ensure DB consistency.
+            fetchConversations();
         } catch {
             console.error('Failed to send message');
-            setMessages(prev => prev.filter(m => m.id !== tempMsg.id));
-            setNewMessage(msgContent); // Restore message on failure
+            setNewMessage(msgContent);
         }
     };
 
@@ -250,7 +248,7 @@ const Messages = () => {
                                     disablePadding
                                     key={conv.other_user_id}
                                     sx={{
-                                        borderLeft: selectedUser?.other_user_id === conv.other_user_id ? '4px solid var(--primary-main)' : '4px solid transparent',
+                                        borderLeft: selectedConv?.other_user_id === conv.other_user_id ? '4px solid var(--primary-main)' : '4px solid transparent',
                                         '&:hover': { bgcolor: 'rgba(0,0,0,0.02)' }
                                     }}
                                 >
@@ -259,7 +257,7 @@ const Messages = () => {
                                         sx={{
                                             py: 2,
                                             px: 3,
-                                            bgcolor: selectedUser?.other_user_id === conv.other_user_id ? 'rgba(46, 125, 50, 0.08)' : 'transparent',
+                                            bgcolor: selectedConv?.other_user_id === conv.other_user_id ? 'rgba(46, 125, 50, 0.08)' : 'transparent',
                                         }}
                                     >
                                         <ListItemAvatar>
@@ -275,18 +273,32 @@ const Messages = () => {
                                         <ListItemText
                                             primary={
                                                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                    <Typography sx={{ fontWeight: 700, noWrap: true }}>{conv.username}</Typography>
-                                                    {conv.is_read === 0 && conv.last_message_sender_id !== user.id && (
-                                                        <Box sx={{ width: 8, height: 8, bgcolor: 'error.main', borderRadius: '50%' }} />
+                                                    <Typography sx={{ fontWeight: 700, noWrap: true }}>{conv.other_username}</Typography>
+                                                    {conv.unread_count > 0 && (
+                                                        <Box sx={{
+                                                            minWidth: 18,
+                                                            height: 18,
+                                                            bgcolor: 'error.main',
+                                                            borderRadius: '9px',
+                                                            color: 'white',
+                                                            fontSize: '0.65rem',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            px: 0.5,
+                                                            fontWeight: 900
+                                                        }}>
+                                                            {conv.unread_count}
+                                                        </Box>
                                                     )}
                                                 </Box>
                                             }
-                                            secondary={conv.last_message}
+                                            secondary={conv.last_message_content}
                                             primaryTypographyProps={{ component: 'div' }}
                                             secondaryTypographyProps={{
                                                 noWrap: true,
                                                 variant: 'caption',
-                                                sx: { fontWeight: conv.is_read === 0 && conv.last_message_sender_id !== user.id ? 800 : 400, color: conv.is_read === 0 && conv.last_message_sender_id !== user.id ? 'text.primary' : 'text.secondary' }
+                                                sx: { fontWeight: conv.unread_count > 0 ? 800 : 400, color: conv.unread_count > 0 ? 'text.primary' : 'text.secondary' }
                                             }}
                                             sx={{ ml: 1 }}
                                         />
@@ -337,13 +349,13 @@ const Messages = () => {
 
             {/* Chat Content */}
             <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', bgcolor: '#f0f2f5' }}>
-                {selectedUser ? (
+                {selectedConv ? (
                     <>
                         {/* Chat Header */}
                         <Box sx={{ p: 2, bgcolor: 'white', borderBottom: '1px solid #eee', display: 'flex', alignItems: 'center', gap: 2, boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
-                            <Avatar src={getImageUrl(selectedUser.avatar_url)}>{selectedUser.username.charAt(0)}</Avatar>
+                            <Avatar src={getImageUrl(selectedConv.avatar_url)}>{selectedConv.other_username?.charAt(0)}</Avatar>
                             <Box>
-                                <Typography sx={{ fontWeight: 800 }}>{selectedUser.username}</Typography>
+                                <Typography sx={{ fontWeight: 800 }}>{selectedConv.other_username}</Typography>
                                 <Typography variant="caption" color="success.main">Active Now</Typography>
                             </Box>
                         </Box>

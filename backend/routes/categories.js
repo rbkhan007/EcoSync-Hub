@@ -1,6 +1,5 @@
-const express = require('express');
 const db = require('../db');
-const { authenticateToken } = require('../middleware/auth');
+const { authenticateToken, isAdmin } = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -28,8 +27,8 @@ router.get('/:id', async (req, res) => {
     }
 });
 
-// Create category (protected)
-router.post('/', authenticateToken, async (req, res) => {
+// Create category (Admin only)
+router.post('/', authenticateToken, isAdmin, async (req, res) => {
     const { name, description } = req.body;
 
     if (!name) {
@@ -47,8 +46,8 @@ router.post('/', authenticateToken, async (req, res) => {
     }
 });
 
-// Update category (protected)
-router.put('/:id', authenticateToken, async (req, res) => {
+// Update category (Admin only)
+router.put('/:id', authenticateToken, isAdmin, async (req, res) => {
     const { id } = req.params;
     const { name, description } = req.body;
 
@@ -66,8 +65,8 @@ router.put('/:id', authenticateToken, async (req, res) => {
     }
 });
 
-// Delete category (protected)
-router.delete('/:id', authenticateToken, async (req, res) => {
+// Delete category (Admin only)
+router.delete('/:id', authenticateToken, isAdmin, async (req, res) => {
     const { id } = req.params;
     try {
         const [result] = await db.query('DELETE FROM categories WHERE id = ?', [id]);

@@ -37,7 +37,7 @@ router.post('/confirm', authenticateToken, async (req, res) => {
 
         // Insert payment record
         await connection.query(
-            'INSERT INTO payments (order_id, payment_intent_id, amount, currency, status, payment_method) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT (payment_intent_id) DO UPDATE SET status = EXCLUDED.status, updated_at = CURRENT_TIMESTAMP',
+            'INSERT INTO payments (order_id, payment_intent_id, amount, currency, status, payment_method) VALUES (?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE status = VALUES(status), updated_at = CURRENT_TIMESTAMP',
             [order_id, payment_intent_id, amount, 'BDT', 'succeeded', payment_method || 'card']
         );
 
@@ -49,7 +49,7 @@ router.post('/confirm', authenticateToken, async (req, res) => {
 
         // Calculate and credit CO2 reduction from products
         const [orderItems] = await connection.query(
-            `SELECT p.co2_reduction_kg, oi.quantity 
+            `SELECT p.co2_saving_kg, oi.quantity 
              FROM order_items oi 
              JOIN products p ON oi.product_id = p.id 
              WHERE oi.order_id = ?`,
@@ -58,7 +58,7 @@ router.post('/confirm', authenticateToken, async (req, res) => {
 
         let totalCO2Saved = 0;
         orderItems.forEach(item => {
-            totalCO2Saved += (item.co2_reduction_kg * item.quantity);
+            totalCO2Saved += (item.co2_saving_kg * item.quantity);
         });
 
         if (totalCO2Saved > 0) {
@@ -68,15 +68,15 @@ router.post('/confirm', authenticateToken, async (req, res) => {
             );
 
             await connection.query(
-                'INSERT INTO carbon_logs (user_id, amount_kg, source) VALUES (?, ?, ?)',
+                'INSERT INTO carbon_logs (user_id, amount_kg, action_type) VALUES (?, ?, ?)',
                 [req.user.id, totalCO2Saved, `Purchase: Order #${order_id}`]
             );
         }
 
         // Add notification for the user
         const [notifResult] = await connection.query(
-            'INSERT INTO notifications (user_id, title, message, type, reference_id, reference_type) VALUES (?, ?, ?, ?, ?, ?)',
-            [req.user.id, 'Payment Successful', `Your payment for order #${order_id} was successful! You saved ${totalCO2Saved}kg CO2.`, 'order', order_id, 'order_payment']
+            'INSERT INTO notifications (user_id, type, target_id, message) VALUES (?, ?, ?, ?)',
+            [req.user.id, 'order', order_id, `Your payment for order #${order_id} was successful! You saved ${totalCO2Saved}kg CO2.`]
         );
 
         // Real-time sync

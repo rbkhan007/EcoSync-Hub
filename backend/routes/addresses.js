@@ -21,10 +21,10 @@ router.get('/', authenticateToken, async (req, res) => {
 // Add new address
 router.post('/', authenticateToken, async (req, res) => {
     const userId = req.user.id;
-    const { address_type, full_name, phone, house_flat_no, road_street, area_locality, post_office, thana_upazila, district, division, postal_code, country, is_default } = req.body;
+    const { address_type, full_name, phone, house_flat_no, road_street, area_locality, post_office, upazila_id, district_id, division, postal_code, country, is_default } = req.body;
 
-    if (!full_name || !house_flat_no || !thana_upazila || !district || !postal_code) {
-        return res.status(400).json({ message: 'Required fields missing: full_name, house_flat_no, thana_upazila, district, postal_code' });
+    if (!full_name || !house_flat_no || !upazila_id || !district_id || !postal_code) {
+        return res.status(400).json({ message: 'Required fields missing: full_name, house_flat_no, upazila_id, district_id, postal_code' });
     }
 
     try {
@@ -33,8 +33,8 @@ router.post('/', authenticateToken, async (req, res) => {
         }
 
         const [result] = await db.query(
-            'INSERT INTO user_addresses (user_id, address_type, full_name, phone, house_flat_no, road_street, area_locality, post_office, thana_upazila, district, division, postal_code, country, is_default) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-            [userId, address_type || 'home', full_name, phone || '', house_flat_no, road_street || '', area_locality || '', post_office || '', thana_upazila, district, division || '', postal_code, country || 'BANGLADESH', is_default || false]
+            'INSERT INTO user_addresses (user_id, address_type, full_name, phone, house_flat_no, road_street, area_locality, post_office, upazila_id, district_id, division, postal_code, country, is_default) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [userId, address_type || 'home', full_name, phone || '', house_flat_no, road_street || '', area_locality || '', post_office || '', upazila_id, district_id, division || '', postal_code, country || 'BANGLADESH', is_default || false]
         );
 
         res.status(201).json({ message: 'Address added', id: result.insertId });
@@ -47,7 +47,7 @@ router.post('/', authenticateToken, async (req, res) => {
 router.put('/:id', authenticateToken, async (req, res) => {
     const userId = req.user.id;
     const { id } = req.params;
-    const { address_type, full_name, phone, house_flat_no, road_street, area_locality, post_office, thana_upazila, district, division, postal_code, country, is_default } = req.body;
+    const { address_type, full_name, phone, house_flat_no, road_street, area_locality, post_office, upazila_id, district_id, division, postal_code, country, is_default } = req.body;
 
     try {
         if (is_default) {
@@ -55,8 +55,8 @@ router.put('/:id', authenticateToken, async (req, res) => {
         }
 
         const [result] = await db.query(
-            'UPDATE user_addresses SET address_type = ?, full_name = ?, phone = ?, house_flat_no = ?, road_street = ?, area_locality = ?, post_office = ?, thana_upazila = ?, district = ?, division = ?, postal_code = ?, country = ?, is_default = ? WHERE id = ? AND user_id = ?',
-            [address_type || 'home', full_name, phone || '', house_flat_no, road_street || '', area_locality || '', post_office || '', thana_upazila, district, division || '', postal_code, country || 'BANGLADESH', is_default || false, id, userId]
+            'UPDATE user_addresses SET address_type = ?, full_name = ?, phone = ?, house_flat_no = ?, road_street = ?, area_locality = ?, post_office = ?, upazila_id = ?, district_id = ?, division = ?, postal_code = ?, country = ?, is_default = ? WHERE id = ? AND user_id = ?',
+            [address_type || 'home', full_name, phone || '', house_flat_no, road_street || '', area_locality || '', post_office || '', upazila_id, district_id, division || '', postal_code, country || 'BANGLADESH', is_default || false, id, userId]
         );
 
         if (result.affectedRows === 0) {

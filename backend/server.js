@@ -18,45 +18,40 @@ const db = require('./db').promise();
 const app = express();
 const server = http.createServer(app);
 
-// Socket.IO with dynamic CORS based on environment
-const socketCorsOrigin = process.env.FRONTEND_URL
-    ? process.env.FRONTEND_URL.split(',').map(o => o.trim())
-    : "*";
+// Note: Socket.IO will be initialized after Express CORS setup so it can
+// reuse the same allowed origins. This prevents mismatches between HTTP
+// CORS and WebSocket CORS during development/production.
 
-const io = socketIo(server, {
-    cors: {
-        origin: socketCorsOrigin,
-        methods: ["GET", "POST"],
-        credentials: true
-    }
-});
+// Socket.IO will be created later (after CORS/allowedOrigins is defined)
+// so that it can use the same origin whitelist as Express.
 
-// Export io for use in routes
-module.exports.io = io;
-
-// Real-time Database Notifications
-const { pool } = require('./db');
-pool.connect((err, client, release) => {
-    if (err) {
-        console.error('Error connecting for LISTEN:', err.stack);
-        return;
-    }
-    client.query('LISTEN db_changes');
-    client.on('notification', (msg) => {
-        try {
-            const payload = JSON.parse(msg.payload);
-            console.log('Database Change Notification:', payload);
-            io.emit('db_update', payload);
-        } catch (e) {
-            console.error('Error parsing notification payload:', e);
+// Real-time Database Notifications (PostgreSQL Only)
+if (process.env.DB_TYPE === 'postgres') {
+    const { pool: pgPool } = require('./db');
+    pgPool.connect((err, client, release) => {
+        if (err) {
+            console.error('Error connecting for LISTEN:', err.stack);
+            return;
         }
-    });
+        client.query('LISTEN db_changes');
+        client.on('notification', (msg) => {
+            try {
+                const payload = JSON.parse(msg.payload);
+                console.log('Database Change Notification:', payload);
+                io.emit('db_update', payload);
+            } catch (e) {
+                console.error('Error parsing notification payload:', e);
+            }
+        });
 
-    client.on('error', (err) => {
-        console.error('Database client error:', err);
-        release();
+        client.on('error', (err) => {
+            console.error('Database client error:', err);
+            release();
+        });
     });
-});
+} else {
+    console.log('[Real-time] Skipping PG-specific LISTEN (MySQL environment)');
+}
 
 const PORT = process.env.PORT || 5000;
 
@@ -103,6 +98,23 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(express.json());
 
+// Initialize Socket.IO with CORS that matches Express `allowedOrigins` so
+// WebSocket connections are allowed from the same origins as HTTP requests.
+const socketCorsOrigin = allowedOrigins.length === 0 ? true : allowedOrigins;
+const io = socketIo(server, {
+    cors: {
+        origin: socketCorsOrigin,
+        methods: ["GET", "POST"],
+        credentials: true
+    }
+});
+
+// Expose io to routes
+app.set('io', io);
+
+// Export io for use in routes
+module.exports.io = io;
+
 // Routes
 const authRoutes = require('./routes/auth');
 const productRoutes = require('./routes/products');
@@ -116,6 +128,7 @@ const adminRoutes = require('./routes/admin');
 const paymentRoutes = require('./routes/payment');
 const sellerRoutes = require('./routes/sellers');
 const communityRoutes = require('./routes/community');
+const postsRoutes = require('./routes/posts');
 const challengeRoutes = require('./routes/challenges');
 const carbonRoutes = require('./routes/carbon');
 const notificationRoutes = require('./routes/notifications');
@@ -127,6 +140,9 @@ const databaseRoutes = require('./routes/database');
 const uploadRoutes = require('./routes/upload');
 const quizRoutes = require('./routes/quiz');
 const productCommentRoutes = require('./routes/product_comments');
+
+const socialFeaturesRoutes = require('./routes/social-features');
+const insightsRoutes = require('./routes/insights');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);
@@ -140,6 +156,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/payment', paymentRoutes);
 app.use('/api/sellers', sellerRoutes);
 app.use('/api/community', communityRoutes);
+app.use('/api/posts', postsRoutes);
 app.use('/api/challenges', challengeRoutes);
 app.use('/api/carbon', carbonRoutes);
 app.use('/api/notifications', notificationRoutes);
@@ -151,6 +168,9 @@ app.use('/api/admin/database', databaseRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/quizzes', quizRoutes);
 app.use('/api/product-comments', productCommentRoutes);
+app.use('/api', socialFeaturesRoutes);
+app.use('/api/public/insights', insightsRoutes);
+
 
 // Serve uploaded files statically
 const path = require('path');
@@ -215,44 +235,92 @@ io.use((socket, next) => {
             return next(new Error('Authentication error'));
         }
         socket.userId = decoded.id;
+        socket.role = decoded.role; // Save role from token
         next();
     });
 });
 
 // Socket.IO connection handling
 io.on('connection', (socket) => {
-    console.log('User connected:', socket.userId);
+    console.log(`User connected: ${socket.userId} (${socket.role})`);
 
-    // Join user's room for private messages
+    // Join user's personal room and role-based rooms
+    socket.join(`user:${socket.userId}`); // For buyer updates
+
+    // For legacy support or direct messaging
     socket.join(socket.userId);
 
-    // Handle private messages
+    if (socket.role === 'seller' || socket.role === 'admin') {
+        socket.join(`seller:${socket.userId}`); // For seller updates
+        console.log(`Joined seller room: seller:${socket.userId}`);
+    }
+
+    if (socket.role === 'admin') {
+        socket.join('admin:room'); // For admin dashboards
+        console.log(`Joined admin room: admin:room`);
+    }
+
+    // Handle private messages (New Conversation-based logic)
     socket.on('private_message', async (data) => {
-        const { receiver_id, content } = data;
+        const { conversation_id, content, receiver_id } = data;
         try {
+            let convId = conversation_id;
+
+            // If no conversation_id, find or create one (legacy/start new chat support)
+            if (!convId && receiver_id) {
+                const [existing] = await db.query(
+                    `SELECT conversation_id FROM conversation_participants 
+                     WHERE user_id = ? AND conversation_id IN 
+                     (SELECT conversation_id FROM conversation_participants WHERE user_id = ?)`,
+                    [socket.userId, receiver_id]
+                );
+
+                if (existing.length > 0) {
+                    convId = existing[0].conversation_id;
+                } else {
+                    const [newConv] = await db.query('INSERT INTO conversations (title) VALUES (?)', [`Chat ${socket.userId}-${receiver_id}`]);
+                    convId = newConv.insertId;
+                    await db.query('INSERT INTO conversation_participants (conversation_id, user_id) VALUES (?, ?), (?, ?)',
+                        [convId, socket.userId, convId, receiver_id]);
+                }
+            }
+
+            if (!convId) return socket.emit('message_error', { error: 'No conversation target' });
+
             // Save message to database
             const [result] = await db.query(
-                'INSERT INTO messages (sender_id, receiver_id, content) VALUES (?, ?, ?)',
-                [socket.userId, receiver_id, content]
+                'INSERT INTO messages (sender_id, conversation_id, content, message_type) VALUES (?, ?, ?, ?)',
+                [socket.userId, convId, content, 'text']
             );
 
             const message = {
                 id: result.insertId,
                 sender_id: socket.userId,
-                receiver_id,
+                conversation_id: convId,
                 content,
-                is_read: false,
                 created_at: new Date()
             };
 
-            // Send to receiver's room
-            socket.to(receiver_id).emit('new_message', message);
+            // Broadcast to the conversation room
+            io.to(`conv:${convId}`).emit('new_message', message);
 
-            // Send confirmation to sender
-            socket.emit('message_sent', message);
+            // Notify specific user with a ping (for notifications/ui count)
+            if (receiver_id) {
+                socket.to(`user:${receiver_id}`).emit('message_notification', {
+                    conversation_id: convId,
+                    content: content.substring(0, 50)
+                });
+            }
         } catch (error) {
+            console.error('Socket Message Error:', error);
             socket.emit('message_error', { error: 'Failed to send message' });
         }
+    });
+
+    // Join conversation rooms
+    socket.on('join_conversation', (convId) => {
+        socket.join(`conv:${convId}`);
+        console.log(`User ${socket.userId} joined conversation: ${convId}`);
     });
 
     // Handle message read

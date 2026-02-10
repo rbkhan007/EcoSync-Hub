@@ -3,7 +3,7 @@ import {
     Box, Typography, Grid, Card, CardContent, Button, Tabs, Tab,
     Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
     Paper, Avatar, Chip, IconButton, Dialog, DialogTitle, DialogContent,
-    DialogActions, TextField, CircularProgress, Alert, Divider
+    DialogActions, TextField, CircularProgress, Alert, Divider, Snackbar
 } from '@mui/material';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import InventoryIcon from '@mui/icons-material/Inventory';
@@ -18,6 +18,7 @@ import SalesIcon from '@mui/icons-material/ShoppingCart';
 import EcoIcon from '@mui/icons-material/Spa';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useRealtime } from '../hooks/useRealtime';
 import { getImageUrl } from '../utils/imageUtils';
 
 const CustomTabPanel = (props) => {
@@ -136,6 +137,29 @@ const Seller = () => {
         }
     };
 
+    const [notification, setNotification] = useState({ open: false, message: '' });
+    const { socket } = useRealtime();
+
+    useEffect(() => {
+        if (!socket) return;
+
+        socket.on('order.created', (data) => {
+            console.log('New order received:', data);
+            setNotification({ open: true, message: `New Order #${data.order_id} Received! ৳${data.total_amount}` });
+
+            // Refresh data silently to update orders and inventory
+            fetchData();
+
+            // Play notification sound (optional)
+            const audio = new Audio('/notification.mp3'); // Ensure this file exists or remove
+            audio.play().catch(e => console.log('Audio play failed', e));
+        });
+
+        return () => {
+            socket.off('order.created');
+        };
+    }, [socket, fetchData]);
+
     if (loading) return <Box sx={{ p: 8, textAlign: 'center' }}><CircularProgress /></Box>;
 
     return (
@@ -147,6 +171,18 @@ const Seller = () => {
                 </Box>
                 <Button component={Link} to="/" startIcon={<BackIcon />} variant="outlined" sx={{ borderRadius: '12px' }}>Back to Marketplace</Button>
             </Box>
+
+            {/* Notification Toast */}
+            <Snackbar
+                open={notification.open}
+                autoHideDuration={6000}
+                onClose={() => setNotification({ ...notification, open: false })}
+                anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+            >
+                <Alert severity="success" variant="filled" sx={{ width: '100%', fontWeight: 'bold' }}>
+                    {notification.message}
+                </Alert>
+            </Snackbar>
 
             {error && <Alert severity="error" sx={{ mb: 4 }}>{error}</Alert>}
 

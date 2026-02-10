@@ -1,6 +1,5 @@
-const express = require('express');
 const db = require('../db');
-const { authenticateToken } = require('../middleware/auth');
+const { authenticateToken, isAdmin } = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -114,10 +113,7 @@ router.post('/:id/submit', authenticateToken, async (req, res) => {
 });
 
 // Create manual quiz (Admin only)
-router.post('/', authenticateToken, async (req, res) => {
-    if (req.user.role !== 'admin') {
-        return res.status(403).json({ message: 'Only admins can create quizzes' });
-    }
+router.post('/', authenticateToken, isAdmin, async (req, res) => {
 
     const { title, description, points_reward, questions } = req.body;
 

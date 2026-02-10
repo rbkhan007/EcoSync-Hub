@@ -20,6 +20,9 @@ import MenuIcon from '@mui/icons-material/Menu';
 import ExploreIcon from '@mui/icons-material/Explore';
 import ShoppingBagIcon from '@mui/icons-material/ShoppingBag';
 import GroupsIcon from '@mui/icons-material/Groups';
+import MovieIcon from '@mui/icons-material/Movie';
+import Groups2Icon from '@mui/icons-material/Groups2';
+import EventIcon from '@mui/icons-material/Event';
 import SearchIcon from '@mui/icons-material/Search';
 import ThemeSwitcher from './ThemeSwitcher';
 
@@ -58,10 +61,14 @@ const Navigation = () => {
     const navItems = [
         { label: 'Search', path: '/search', icon: <SearchIcon /> },
         { label: 'Shop', path: '/products', icon: <ShoppingBagIcon /> },
+        { label: 'Feed', path: '/feed', icon: <GroupsIcon /> },
+        { label: 'Reels', path: '/reels', icon: <MovieIcon /> },
+        { label: 'Groups', path: '/groups', icon: <Groups2Icon /> },
+        { label: 'Events', path: '/events', icon: <EventIcon /> },
         { label: 'Challenges', path: '/challenges', icon: <EmojiEventsIcon /> },
         { label: 'Impact', path: '/impact', icon: <AirIcon /> },
         { label: 'Heroes', path: '/leaderboard', icon: <LeaderboardIcon /> },
-        { label: 'Community', path: '/community', icon: <GroupsIcon /> }
+        { label: 'Community', path: '/community', icon: <PublicIcon /> }
     ].filter(() => user || location.pathname !== '/');
 
     const drawer = (

@@ -9,7 +9,7 @@ router.get('/:slug', async (req, res) => {
     const { slug } = req.params;
     try {
         const [users] = await db.query(
-            'SELECT id, username, email, bio, avatar_url, eco_points FROM users WHERE username = ?',
+            'SELECT id, username, email, bio, profile_picture, eco_points FROM users WHERE username = ? AND deleted_at IS NULL',
             [slug]
         );
         if (users.length === 0) {
@@ -31,17 +31,17 @@ router.post('/apply', authenticateToken, async (req, res) => {
 router.get('/dashboard/stats', authenticateToken, async (req, res) => {
     const sellerId = req.user.id;
     try {
-        const [productCount] = await db.query('SELECT COUNT(*) as count FROM products WHERE seller_id = ?', [sellerId]);
+        const [productCount] = await db.query('SELECT COUNT(*) as count FROM products WHERE seller_id = ? AND deleted_at IS NULL', [sellerId]);
         const [orderCount] = await db.query(
             'SELECT COUNT(DISTINCT oi.order_id) as count FROM order_items oi JOIN products p ON oi.product_id = p.id WHERE p.seller_id = ?',
             [sellerId]
         );
         const [revenue] = await db.query(
-            'SELECT SUM(oi.price * oi.quantity) as total FROM order_items oi JOIN products p ON oi.product_id = p.id WHERE p.seller_id = ?',
+            'SELECT SUM(oi.price_at_purchase * oi.quantity) as total FROM order_items oi JOIN products p ON oi.product_id = p.id WHERE p.seller_id = ?',
             [sellerId]
         );
         const [impact] = await db.query(
-            'SELECT SUM(p.co2_reduction_kg * oi.quantity) as total FROM order_items oi JOIN products p ON oi.product_id = p.id WHERE p.seller_id = ?',
+            'SELECT SUM(p.co2_saving_kg * oi.quantity) as total FROM order_items oi JOIN products p ON oi.product_id = p.id WHERE p.seller_id = ?',
             [sellerId]
         );
 
@@ -83,14 +83,14 @@ router.get('/dashboard/customers', authenticateToken, async (req, res) => {
     const sellerId = req.user.id;
     try {
         const [customers] = await db.query(
-            `SELECT DISTINCT u.id, u.username, u.email, u.avatar_url, 
-             COUNT(DISTINCT o.id) as order_count, SUM(oi.price * oi.quantity) as total_spent
+            `SELECT DISTINCT u.id, u.username, u.email, u.profile_picture, 
+             COUNT(DISTINCT o.id) as order_count, SUM(oi.price_at_purchase * oi.quantity) as total_spent
              FROM users u
              JOIN orders o ON u.id = o.user_id
              JOIN order_items oi ON o.id = oi.order_id
              JOIN products p ON oi.product_id = p.id
-             WHERE p.seller_id = ?
-             GROUP BY u.id, u.username, u.email, u.avatar_url`,
+             WHERE p.seller_id = ? AND u.deleted_at IS NULL
+             GROUP BY u.id, u.username, u.email, u.profile_picture`,
             [sellerId]
         );
         res.json(customers);

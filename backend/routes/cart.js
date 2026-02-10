@@ -9,7 +9,7 @@ router.get('/', authenticateToken, async (req, res) => {
     const userId = req.user.id;
     try {
         const [cartItems] = await db.query(
-            `SELECT ci.id, ci.quantity, p.id as product_id, p.name, p.price, p.image_url
+            `SELECT ci.id, ci.quantity, p.id as product_id, p.name, p.price, p.images
        FROM cart_items ci
        JOIN products p ON ci.product_id = p.id
        WHERE ci.user_id = ?`,

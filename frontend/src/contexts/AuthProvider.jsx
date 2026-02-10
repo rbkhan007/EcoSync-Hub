@@ -36,6 +36,37 @@ export const AuthProvider = ({ children }) => {
                 return Promise.reject(error);
             }
         );
+
+        // Add response interceptor to handle token refresh on 401
+        instance.interceptors.response.use(
+            (response) => response,
+            async (error) => {
+                const originalRequest = error.config;
+
+                // If 401 and not already retrying, try to refresh token
+                if (error.response?.status === 401 && !originalRequest._retry) {
+                    originalRequest._retry = true;
+                    const refreshToken = localStorage.getItem('refreshToken');
+
+                    if (refreshToken) {
+                        try {
+                            const response = await axios.post(`${API_BASE_URL}/auth/refresh-token`, { refreshToken });
+                            const { token } = response.data;
+                            localStorage.setItem('token', token);
+                            originalRequest.headers.Authorization = `Bearer ${token}`;
+                            return instance(originalRequest);
+                        } catch (refreshError) {
+                            // Refresh failed, logout
+                            localStorage.removeItem('token');
+                            localStorage.removeItem('refreshToken');
+                            window.location.href = '/login';
+                        }
+                    }
+                }
+                return Promise.reject(error);
+            }
+        );
+
         return instance;
     }, [API_BASE_URL]);
 
@@ -45,6 +76,7 @@ export const AuthProvider = ({ children }) => {
             setSocket(null);
         }
         localStorage.removeItem('token');
+        localStorage.removeItem('refreshToken');
         setUser(null);
         setCartCount(0);
         setWishlistCount(0);
@@ -87,7 +119,7 @@ export const AuthProvider = ({ children }) => {
 
     const fetchUserData = useCallback(async () => {
         try {
-            const response = await api.get('/profile');
+            const response = await api.get('/auth/me');
             if (response.data) {
                 setUser(response.data);
                 // Fetch counts after user is loaded
@@ -115,9 +147,12 @@ export const AuthProvider = ({ children }) => {
     const login = useCallback(async (email, password) => {
         try {
             const response = await api.post('/auth/login', { email, password });
-            const { token, user: userData } = response.data;
+            const { token, refreshToken, user: userData } = response.data;
             localStorage.setItem('token', token);
-            setUser({ ...userData, token });
+            if (refreshToken) {
+                localStorage.setItem('refreshToken', refreshToken);
+            }
+            setUser(userData);
             initSocket(token);
             updateCounts(); // Update counts on login
             return { success: true };
@@ -137,7 +172,7 @@ export const AuthProvider = ({ children }) => {
 
     const refreshUser = useCallback(async () => {
         try {
-            const response = await api.get('/profile');
+            const response = await api.get('/auth/me');
             if (response.data) {
                 setUser(response.data);
             }

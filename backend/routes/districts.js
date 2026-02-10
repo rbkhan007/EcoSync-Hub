@@ -1,9 +1,9 @@
-const express = require('express');
 const db = require('../db');
+const { authenticateToken, isAdmin } = require('../middleware/auth');
 const router = express.Router();
 
-// Create district (admin only?)
-router.post('/', async (req, res) => {
+// Create district (Admin only)
+router.post('/', authenticateToken, isAdmin, async (req, res) => {
     const { name, code } = req.body;
 
     if (!name) {

@@ -1,29 +1,56 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Box, Typography, Card, Grid, Chip, Button, Divider, Skeleton } from '@mui/material';
 import { useAuth } from '../contexts/AuthContext';
+import { useRealtime } from '../hooks/useRealtime';
 import { Link } from 'react-router-dom';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import LocalShippingIcon from '@mui/icons-material/LocalShipping';
+import { Snackbar, Alert } from '@mui/material';
 
 const Orders = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [notification, setNotification] = useState({ open: false, message: '' });
   const { api } = useAuth();
+  const { socket } = useRealtime();
+
+  const fetchOrders = useCallback(async () => {
+    try {
+      const response = await api.get('/orders');
+      setOrders(response.data);
+    } catch {
+      setError('Failed to load orders');
+    } finally {
+      setLoading(false);
+    }
+  }, [api]);
 
   useEffect(() => {
-    const fetchOrders = async () => {
-      try {
-        const response = await api.get('/orders');
-        setOrders(response.data);
-      } catch {
-        setError('Failed to load orders');
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchOrders();
-  }, [api]);
+  }, [fetchOrders]);
+
+  useEffect(() => {
+    if (!socket) return;
+
+    socket.on('order.updated', (data) => {
+      console.log('Order status updated:', data);
+
+      // Update local state
+      setOrders(prev => prev.map(o =>
+        o.id === parseInt(data.order_id) ? { ...o, status: data.status } : o
+      ));
+
+      setNotification({
+        open: true,
+        message: `Order #${data.order_id} status updated to ${data.status.toUpperCase()}!`
+      });
+    });
+
+    return () => {
+      socket.off('order.updated');
+    };
+  }, [socket]);
 
   const getStatusColor = (status) => {
     switch (status?.toLowerCase()) {
@@ -45,6 +72,16 @@ const Orders = () => {
 
   return (
     <Box className="page-container fade-in">
+      <Snackbar
+        open={notification.open}
+        autoHideDuration={6000}
+        onClose={() => setNotification({ ...notification, open: false })}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert severity="info" variant="filled" sx={{ width: '100%', fontWeight: 'bold' }}>
+          {notification.message}
+        </Alert>
+      </Snackbar>
       <Typography variant="h3" sx={{ mb: 4, fontWeight: 800 }}>📦 My Orders</Typography>
 
       {error && <Typography color="error" sx={{ mb: 2 }}>{error}</Typography>}

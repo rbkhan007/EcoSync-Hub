@@ -9,10 +9,10 @@ router.get('/:productId', async (req, res) => {
     const { productId } = req.params;
     try {
         const [comments] = await db.query(
-            'SELECT pc.id, pc.comment, pc.created_at, u.username, u.avatar_url, u.id as user_id ' +
+            `SELECT pc.id, pc.comment, pc.created_at, u.username, u.profile_picture as avatar_url, u.id as user_id ` +
             'FROM product_comments pc ' +
             'JOIN users u ON pc.user_id = u.id ' +
-            'WHERE pc.product_id = ? ' +
+            'WHERE pc.product_id = ? AND pc.deleted_at IS NULL ' +
             'ORDER BY pc.created_at DESC',
             [productId]
         );

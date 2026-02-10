@@ -208,10 +208,27 @@ const Profile = () => {
                   p: 1.5,
                   borderRadius: '12px',
                   display: 'inline-block',
-                  border: '1px dashed rgba(0,0,0,0.1)'
+                  border: '1px dashed rgba(0,0,0,0.1)',
+                  mb: 2
                 }}>
                   {profile.bio || "Eco-Warrior • Change Maker • Sustainability Advocate"}
                 </Typography>
+
+                {/* Social Metrics */}
+                <Box sx={{ display: 'flex', gap: 4, mt: 1, justifyContent: { xs: 'center', md: 'flex-start' } }}>
+                  <Box>
+                    <Typography variant="h6" sx={{ fontWeight: 900, lineHeight: 1 }}>{profile.follower_count || 0}</Typography>
+                    <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary', textTransform: 'uppercase' }}>Followers</Typography>
+                  </Box>
+                  <Box>
+                    <Typography variant="h6" sx={{ fontWeight: 900, lineHeight: 1 }}>{profile.following_count || 0}</Typography>
+                    <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary', textTransform: 'uppercase' }}>Following</Typography>
+                  </Box>
+                  <Box>
+                    <Typography variant="h6" sx={{ fontWeight: 900, lineHeight: 1 }}>{profile.friend_count || 0}</Typography>
+                    <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary', textTransform: 'uppercase' }}>Friends</Typography>
+                  </Box>
+                </Box>
               </Box>
 
               {/* Action Buttons */}
@@ -445,6 +462,36 @@ const Profile = () => {
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
                     <CalendarMonthIcon color="action" />
                     <Typography variant="body1">Joined {formatDate(profile.created_at)}</Typography>
+                  </Box>
+
+                  {/* Badges Section */}
+                  <Divider sx={{ my: 3 }} />
+                  <Typography variant="h6" sx={{ fontWeight: 800, mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <EmojiEventsIcon color="primary" /> Earned Badges
+                  </Typography>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+                    {profile.badges && profile.badges.length > 0 ? (
+                      profile.badges.map((badge, idx) => (
+                        <Tooltip key={idx} title={badge.description}>
+                          <Chip
+                            icon={<span>🏅</span>}
+                            label={badge.name}
+                            sx={{
+                              bgcolor: 'rgba(255, 215, 0, 0.1)',
+                              color: '#b8860b',
+                              fontWeight: 800,
+                              p: 1,
+                              borderRadius: '8px',
+                              border: '1px solid rgba(255, 215, 0, 0.3)'
+                            }}
+                          />
+                        </Tooltip>
+                      ))
+                    ) : (
+                      <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                        No badges earned yet. Complete challenges to unlock!
+                      </Typography>
+                    )}
                   </Box>
                 </CardContent>
               </Card>

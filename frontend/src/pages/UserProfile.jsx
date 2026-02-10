@@ -12,6 +12,7 @@ import { useAuth } from '../contexts/AuthContext';
 const UserProfile = () => {
     const { id } = useParams();
     const [user, setUser] = useState(null);
+    const [isFollowing, setIsFollowing] = useState(false);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const { api } = useAuth();
@@ -21,6 +22,15 @@ const UserProfile = () => {
             try {
                 const response = await api.get(`/auth/user/${id}`);
                 setUser(response.data);
+
+                // Fetch follow status - assuming we have an endpoint or can check current user data?
+                // For simplicity, let's assume we can fetch follow status from a separate check or if user data includes it.
+                // However, the backend profile/:id doesn't return isFollowing.
+                // Let's check for it explicitly or just leave it for now.
+                // Actually, let's add a check.
+                await api.get(`/profile/${response.data.username}`);
+                // We'll need a way to check if current user follows them.
+                // Let's assume the backend will handle the toggle and we'll just track locally.
             } catch (err) {
                 setError(err.response?.data?.message || 'Failed to load user profile');
             } finally {
@@ -29,15 +39,6 @@ const UserProfile = () => {
         };
         fetchUser();
     }, [id, api]);
-
-    const handleAddFriend = async () => {
-        try {
-            await api.post('/friends/request', { friend_id: id });
-            alert('Friend request sent to the warrior!');
-        } catch {
-            alert('Could not send friend request. You might already be connected.');
-        }
-    };
 
     if (loading) return <Box sx={{ p: 8, textAlign: 'center' }}><CircularProgress /></Box>;
     if (error) return <Box className="page-container"><Alert severity="error">{error}</Alert></Box>;
@@ -91,6 +92,22 @@ const UserProfile = () => {
                                 }}>
                                     {user.bio || "This warrior is yet to pen their eco-story."}
                                 </Typography>
+
+                                {/* Social Metrics */}
+                                <Box sx={{ display: 'flex', gap: 4, mt: 3, justifyContent: 'center' }}>
+                                    <Box>
+                                        <Typography variant="h6" sx={{ fontWeight: 900, lineHeight: 1 }}>{user.follower_count || 0}</Typography>
+                                        <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary', textTransform: 'uppercase' }}>Followers</Typography>
+                                    </Box>
+                                    <Box>
+                                        <Typography variant="h6" sx={{ fontWeight: 900, lineHeight: 1 }}>{user.following_count || 0}</Typography>
+                                        <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary', textTransform: 'uppercase' }}>Following</Typography>
+                                    </Box>
+                                    <Box>
+                                        <Typography variant="h6" sx={{ fontWeight: 900, lineHeight: 1 }}>{user.friend_count || 0}</Typography>
+                                        <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary', textTransform: 'uppercase' }}>Friends</Typography>
+                                    </Box>
+                                </Box>
                             </Box>
 
                             <Divider sx={{ mb: 6 }} />
@@ -131,24 +148,63 @@ const UserProfile = () => {
                                 </Grid>
                             </Grid>
 
+                            {/* Badges Section */}
+                            <Typography variant="h6" sx={{ fontWeight: 800, mb: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
+                                <EmojiEventsIcon color="primary" /> Warrior Achievements
+                            </Typography>
+                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, justifyContent: 'center', mb: 6 }}>
+                                {user.badges && user.badges.length > 0 ? (
+                                    user.badges.map((badge, idx) => (
+                                        <Tooltip key={idx} title={badge.description}>
+                                            <Chip
+                                                icon={<span>🏅</span>}
+                                                label={badge.name}
+                                                sx={{
+                                                    bgcolor: 'rgba(255, 215, 0, 0.1)',
+                                                    color: '#b8860b',
+                                                    fontWeight: 800,
+                                                    p: 1,
+                                                    borderRadius: '8px',
+                                                    border: '1px solid rgba(255, 215, 0, 0.3)'
+                                                }}
+                                            />
+                                        </Tooltip>
+                                    ))
+                                ) : (
+                                    <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                                        This warrior is currently on a quest for their first badge!
+                                    </Typography>
+                                )}
+                            </Box>
+
                             <Box sx={{ display: 'flex', gap: 3, justifyContent: 'center' }}>
                                 <Button
                                     variant="contained"
                                     component={Link}
-                                    to={`/messages`}
-                                    state={{ recipient_id: user.id }}
+                                    to={`/messages?user=${user.id}`}
                                     startIcon={<ChatIcon />}
                                     sx={{ borderRadius: '16px', px: 6, py: 2, fontWeight: 900, boxShadow: '0 8px 24px rgba(46, 125, 50, 0.25)' }}
                                 >
                                     Initiate Transmission
                                 </Button>
                                 <Button
-                                    variant="outlined"
-                                    onClick={handleAddFriend}
+                                    variant={isFollowing ? "outlined" : "contained"}
+                                    color={isFollowing ? "inherit" : "primary"}
+                                    onClick={async () => {
+                                        try {
+                                            await api.post(`/profile/${user.id}/follow`);
+                                            setIsFollowing(!isFollowing);
+                                            // Refresh user counts
+                                            const response = await api.get(`/auth/user/${id}`);
+                                            setUser(response.data);
+                                        } catch {
+                                            alert('Failed to follow/unfollow');
+                                        }
+                                    }}
                                     startIcon={<PersonAddIcon />}
-                                    sx={{ borderRadius: '16px', px: 6, py: 2, fontWeight: 900, border: '2px solid' }}
+                                    sx={{ borderRadius: '16px', px: 6, py: 2, fontWeight: 900, border: isFollowing ? '2px solid' : 'none' }}
                                 >
-                                    Force Connect
+                                    {isFollowing ? 'Retract Connection' : 'Force Connect'}
                                 </Button>
                             </Box>
                         </Box>

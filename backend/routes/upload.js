@@ -1,7 +1,6 @@
-const express = require('express');
-const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const { authenticateToken } = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -34,8 +33,8 @@ const upload = multer({
     }
 });
 
-// Single file upload endpoint
-router.post('/', upload.single('image'), (req, res) => {
+// Single file upload endpoint (Authenticated only)
+router.post('/', authenticateToken, upload.single('image'), (req, res) => {
     try {
         if (!req.file) {
             return res.status(400).json({ message: 'No file uploaded' });

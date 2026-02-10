@@ -9,8 +9,8 @@ router.get('/', authenticateToken, async (req, res) => {
     const userId = req.user.id;
     try {
         const [wishlist] = await db.query(
-            `SELECT w.id, w.created_at, p.id as product_id, p.name, p.price, p.image_url
-             FROM wishlists w
+            `SELECT w.id, w.created_at, p.id as product_id, p.name, p.price, p.images
+             FROM wishlist w
              JOIN products p ON w.product_id = p.id
              WHERE w.user_id = ?`,
             [userId]
@@ -32,7 +32,7 @@ router.post('/', authenticateToken, async (req, res) => {
 
     try {
         const [existing] = await db.query(
-            'SELECT id FROM wishlists WHERE user_id = ? AND product_id = ?',
+            'SELECT id FROM wishlist WHERE user_id = ? AND product_id = ?',
             [userId, product_id]
         );
 
@@ -41,7 +41,7 @@ router.post('/', authenticateToken, async (req, res) => {
         }
 
         await db.query(
-            'INSERT INTO wishlists (user_id, product_id) VALUES (?, ?)',
+            'INSERT INTO wishlist (user_id, product_id) VALUES (?, ?)',
             [userId, product_id]
         );
 
@@ -58,7 +58,7 @@ router.delete('/:productId', authenticateToken, async (req, res) => {
 
     try {
         const [result] = await db.query(
-            'DELETE FROM wishlists WHERE user_id = ? AND product_id = ?',
+            'DELETE FROM wishlist WHERE user_id = ? AND product_id = ?',
             [userId, productId]
         );
 
